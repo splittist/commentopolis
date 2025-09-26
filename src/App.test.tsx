@@ -13,23 +13,39 @@ describe('App', () => {
     expect(screen.getByText('Comment-centric document exploration')).toBeInTheDocument()
   })
 
-  it('increments count when button is clicked', () => {
+  it('renders three-panel layout', () => {
     render(<App />)
-    const button = screen.getByRole('button', { name: /count is/i })
     
-    expect(button).toHaveTextContent('Count is 0')
+    // Check for panel toggle buttons
+    expect(screen.getByTitle('Toggle left panel')).toBeInTheDocument()
+    expect(screen.getByTitle('Toggle right panel')).toBeInTheDocument()
     
-    fireEvent.click(button)
-    expect(button).toHaveTextContent('Count is 1')
-    
-    fireEvent.click(button)
-    expect(button).toHaveTextContent('Count is 2')
+    // Check for main content
+    expect(screen.getByText('Welcome to the Three-Panel Interface')).toBeInTheDocument()
   })
 
-  it('renders technology cards', () => {
+  it('toggles left panel state when button is clicked', () => {
     render(<App />)
-    expect(screen.getByText('⚡ Vite')).toBeInTheDocument()
-    expect(screen.getByText('⚛️ React + TypeScript')).toBeInTheDocument()
-    expect(screen.getByText('🎨 Tailwind CSS')).toBeInTheDocument()
+    const leftToggle = screen.getByTitle('Toggle left panel')
+    
+    // Initially should show "Normal" state
+    expect(screen.getByText('Normal')).toBeInTheDocument()
+    
+    // Click to change state
+    fireEvent.click(leftToggle)
+    
+    // Should cycle through states (normal -> focused -> minimized -> normal)
+    expect(screen.getByText('Focused')).toBeInTheDocument()
+  })
+
+  it('toggles right panel state when button is clicked', () => {
+    render(<App />)
+    const rightToggle = screen.getByTitle('Toggle right panel')
+    
+    // Click to change state
+    fireEvent.click(rightToggle)
+    
+    // Should cycle through states
+    expect(screen.getByText('Focused')).toBeInTheDocument()
   })
 })
