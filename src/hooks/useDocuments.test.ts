@@ -11,7 +11,7 @@ vi.mock('react-hot-toast', () => ({
 }));
 
 // Mock crypto.randomUUID
-Object.defineProperty(global, 'crypto', {
+Object.defineProperty(globalThis, 'crypto', {
   value: {
     randomUUID: vi.fn(() => 'mock-uuid-123'),
   },
