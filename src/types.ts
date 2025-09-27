@@ -58,4 +58,9 @@ export interface DocumentStateManager {
   selectAllDocuments: () => void;
   deselectAllDocuments: () => void;
   toggleDocumentSelection: (id: string) => void;
+  // Demo support methods
+  addDemoComments?: (comments: DocumentComment[]) => void;
+  removeDemoComments?: () => void;
+  addDemoDocuments?: (documents: UploadedDocument[]) => void;
+  removeDemoDocuments?: () => void;
 }
