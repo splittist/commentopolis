@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useDocuments } from './useDocuments';
 
 // Mock react-hot-toast
@@ -10,6 +10,12 @@ vi.mock('react-hot-toast', () => ({
   },
 }));
 
+// Mock the docx parser
+vi.mock('../utils/docxParser', () => ({
+  parseDocxComments: vi.fn(),
+  isValidDocxFile: vi.fn(),
+}));
+
 // Mock crypto.randomUUID
 Object.defineProperty(globalThis, 'crypto', {
   value: {
@@ -17,27 +23,58 @@ Object.defineProperty(globalThis, 'crypto', {
   },
 });
 
+// Mock File.prototype.arrayBuffer for Node.js environment
+Object.defineProperty(File.prototype, 'arrayBuffer', {
+  value: function() {
+    return Promise.resolve(new ArrayBuffer(0));
+  },
+  writable: true
+});
+
 describe('useDocuments', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('initializes with empty documents array', () => {
+  it('initializes with empty documents array and comments', () => {
     const { result } = renderHook(() => useDocuments());
     
     expect(result.current.documents).toEqual([]);
+    expect(result.current.comments).toEqual([]);
     expect(result.current.activeDocumentId).toBeNull();
   });
 
-  it('adds valid .docx file', () => {
+  it('adds valid .docx file and processes comments', async () => {
+    const { parseDocxComments, isValidDocxFile } = await import('../utils/docxParser');
+    const { toast } = await import('react-hot-toast');
+    
+    vi.mocked(isValidDocxFile).mockReturnValue(true);
+    vi.mocked(parseDocxComments).mockResolvedValue({
+      comments: [{
+        id: 'mock-uuid-123-1',
+        author: 'Test Author',
+        initial: 'TA',
+        date: new Date('2023-01-01'),
+        text: 'Test comment',
+        documentId: 'mock-uuid-123',
+        reference: 'Comment 1'
+      }],
+      error: undefined
+    });
+
     const { result } = renderHook(() => useDocuments());
     
     const mockFile = new File(['test content'], 'test.docx', {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     });
 
-    act(() => {
-      result.current.addDocument(mockFile);
+    await act(async () => {
+      await result.current.addDocument(mockFile);
+    });
+
+    // Wait for processing to complete
+    await waitFor(() => {
+      expect(result.current.documents[0]?.isProcessing).toBe(false);
     });
 
     expect(result.current.documents).toHaveLength(1);
@@ -46,19 +83,34 @@ describe('useDocuments', () => {
       name: 'test.docx',
       file: mockFile,
       size: mockFile.size,
+      isProcessing: false,
     });
+    
+    expect(result.current.comments).toHaveLength(1);
+    expect(result.current.comments[0]).toMatchObject({
+      id: 'mock-uuid-123-1',
+      author: 'Test Author',
+      text: 'Test comment',
+    });
+
+    expect(toast.success).toHaveBeenCalledWith('Document "test.docx" uploaded successfully');
+    expect(toast.success).toHaveBeenCalledWith('Extracted 1 comment(s) from "test.docx"');
   });
 
   it('rejects non-.docx files', async () => {
+    const { isValidDocxFile } = await import('../utils/docxParser');
     const { toast } = await import('react-hot-toast');
+    
+    vi.mocked(isValidDocxFile).mockReturnValue(false);
+    
     const { result } = renderHook(() => useDocuments());
     
     const mockFile = new File(['test content'], 'test.txt', {
       type: 'text/plain'
     });
 
-    act(() => {
-      result.current.addDocument(mockFile);
+    await act(async () => {
+      await result.current.addDocument(mockFile);
     });
 
     expect(result.current.documents).toHaveLength(0);
@@ -66,34 +118,92 @@ describe('useDocuments', () => {
   });
 
   it('prevents duplicate file uploads', async () => {
+    const { parseDocxComments, isValidDocxFile } = await import('../utils/docxParser');
     const { toast } = await import('react-hot-toast');
+    
+    vi.mocked(isValidDocxFile).mockReturnValue(true);
+    vi.mocked(parseDocxComments).mockResolvedValue({
+      comments: [],
+      error: undefined
+    });
+
     const { result } = renderHook(() => useDocuments());
     
     const mockFile = new File(['test content'], 'test.docx', {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     });
 
-    act(() => {
-      result.current.addDocument(mockFile);
+    await act(async () => {
+      await result.current.addDocument(mockFile);
     });
 
-    act(() => {
-      result.current.addDocument(mockFile);
+    await act(async () => {
+      await result.current.addDocument(mockFile);
     });
 
     expect(result.current.documents).toHaveLength(1);
     expect(toast.error).toHaveBeenCalledWith('Document already uploaded');
   });
 
-  it('removes document correctly', () => {
+  it('handles parsing errors gracefully', async () => {
+    const { parseDocxComments, isValidDocxFile } = await import('../utils/docxParser');
+    const { toast } = await import('react-hot-toast');
+    
+    vi.mocked(isValidDocxFile).mockReturnValue(true);
+    vi.mocked(parseDocxComments).mockResolvedValue({
+      comments: [],
+      error: 'Invalid document structure'
+    });
+
     const { result } = renderHook(() => useDocuments());
     
     const mockFile = new File(['test content'], 'test.docx', {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     });
 
-    act(() => {
-      result.current.addDocument(mockFile);
+    await act(async () => {
+      await result.current.addDocument(mockFile);
+    });
+
+    // Wait for processing to complete
+    await waitFor(() => {
+      expect(result.current.documents[0]?.isProcessing).toBe(false);
+    });
+
+    expect(result.current.documents[0].processingError).toBe('Invalid document structure');
+    expect(toast.error).toHaveBeenCalledWith('Error parsing "test.docx": Invalid document structure');
+  });
+
+  it('removes document and associated comments correctly', async () => {
+    const { parseDocxComments, isValidDocxFile } = await import('../utils/docxParser');
+    
+    vi.mocked(isValidDocxFile).mockReturnValue(true);
+    vi.mocked(parseDocxComments).mockResolvedValue({
+      comments: [{
+        id: 'mock-uuid-123-1',
+        author: 'Test Author',
+        initial: 'TA',
+        date: new Date('2023-01-01'),
+        text: 'Test comment',
+        documentId: 'mock-uuid-123',
+        reference: 'Comment 1'
+      }],
+      error: undefined
+    });
+
+    const { result } = renderHook(() => useDocuments());
+    
+    const mockFile = new File(['test content'], 'test.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+
+    await act(async () => {
+      await result.current.addDocument(mockFile);
+    });
+
+    // Wait for processing to complete
+    await waitFor(() => {
+      expect(result.current.documents[0]?.isProcessing).toBe(false);
     });
 
     const documentId = result.current.documents[0].id;
@@ -103,17 +213,26 @@ describe('useDocuments', () => {
     });
 
     expect(result.current.documents).toHaveLength(0);
+    expect(result.current.comments).toHaveLength(0);
   });
 
-  it('sets active document', () => {
+  it('sets active document', async () => {
+    const { parseDocxComments, isValidDocxFile } = await import('../utils/docxParser');
+    
+    vi.mocked(isValidDocxFile).mockReturnValue(true);
+    vi.mocked(parseDocxComments).mockResolvedValue({
+      comments: [],
+      error: undefined
+    });
+
     const { result } = renderHook(() => useDocuments());
     
     const mockFile = new File(['test content'], 'test.docx', {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     });
 
-    act(() => {
-      result.current.addDocument(mockFile);
+    await act(async () => {
+      await result.current.addDocument(mockFile);
     });
 
     const documentId = result.current.documents[0].id;
