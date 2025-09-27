@@ -1,6 +1,9 @@
 import React from 'react';
 import type { PanelState } from '../types';
 import { Panel } from './Panel';
+import { DocumentUpload } from './DocumentUpload';
+import { DocumentList } from './DocumentList';
+import { useDocumentContext } from '../hooks/useDocumentContext';
 
 interface LeftPanelProps {
   state: PanelState;
@@ -11,6 +14,8 @@ interface LeftPanelProps {
  * Left Panel component with state-specific content
  */
 export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
+  const { documents } = useDocumentContext();
+
   const renderMinimizedContent = () => (
     <div className="flex flex-col items-center space-y-4 p-2">
       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -22,27 +27,46 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
       <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
         <span className="text-purple-600">⚡</span>
       </div>
+      {documents.length > 0 && (
+        <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+          <span className="text-orange-600 text-xs font-semibold">{documents.length}</span>
+        </div>
+      )}
     </div>
   );
 
   const renderNormalContent = () => (
     <div className="p-4 space-y-4">
       <div className="space-y-2">
-        <h3 className="font-semibold text-gray-800">Navigation</h3>
-        <nav className="space-y-1">
-          <a href="#" className="block px-3 py-2 rounded-md hover:bg-gray-200 text-sm">
-            📂 Documents
-          </a>
-          <a href="#" className="block px-3 py-2 rounded-md hover:bg-gray-200 text-sm">
-            🔍 Search
-          </a>
-          <a href="#" className="block px-3 py-2 rounded-md hover:bg-gray-200 text-sm">
-            ⚡ Recent
-          </a>
-          <a href="#" className="block px-3 py-2 rounded-md hover:bg-gray-200 text-sm">
-            ⭐ Favorites
-          </a>
-        </nav>
+        <h3 className="font-semibold text-gray-800">Documents</h3>
+        <DocumentUpload className="mb-4" />
+      </div>
+      
+      {documents.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="font-medium text-gray-700">Uploaded Documents</h4>
+          <DocumentList maxHeight="max-h-32" showDetails={false} />
+        </div>
+      )}
+      
+      <div className="pt-4 border-t border-gray-200">
+        <div className="space-y-2">
+          <h3 className="font-semibold text-gray-800">Navigation</h3>
+          <nav className="space-y-1">
+            <a href="#" className="block px-3 py-2 rounded-md hover:bg-gray-200 text-sm">
+              📂 Documents
+            </a>
+            <a href="#" className="block px-3 py-2 rounded-md hover:bg-gray-200 text-sm">
+              🔍 Search
+            </a>
+            <a href="#" className="block px-3 py-2 rounded-md hover:bg-gray-200 text-sm">
+              ⚡ Recent
+            </a>
+            <a href="#" className="block px-3 py-2 rounded-md hover:bg-gray-200 text-sm">
+              ⭐ Favorites
+            </a>
+          </nav>
+        </div>
       </div>
       
       <div className="pt-4 border-t border-gray-200">
@@ -61,8 +85,22 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
   const renderFocusedContent = () => (
     <div className="p-4 space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Document Explorer</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Document Center</h2>
         
+        <div className="space-y-4">
+          <DocumentUpload />
+          
+          {documents.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-3">Uploaded Documents</h3>
+              <DocumentList maxHeight="max-h-64" showDetails={true} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="pt-4 border-t border-gray-200">
+        <h3 className="font-semibold text-gray-800 mb-3">Document Templates</h3>
         <div className="space-y-3">
           <div className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
             <h4 className="font-medium text-gray-800">Project Overview</h4>

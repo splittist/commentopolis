@@ -2,3 +2,5 @@ export { Panel } from './Panel';
 export { LeftPanel } from './LeftPanel';
 export { RightPanel } from './RightPanel';
 export { CenterPanel } from './CenterPanel';
+export { DocumentUpload } from './DocumentUpload';
+export { DocumentList } from './DocumentList';
