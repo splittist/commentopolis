@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { parseDocxComments, isValidDocxFile } from './docxParser';
+import type JSZip from 'jszip';
 
 // Mock JSZip
 vi.mock('jszip', () => {
@@ -58,7 +59,7 @@ describe('docxParser', () => {
       const { default: JSZip } = await import('jszip');
       const mockZip = {
         file: vi.fn().mockReturnValue(null)
-      };
+      } as unknown as JSZip;
       
       vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip);
       
@@ -97,7 +98,7 @@ describe('docxParser', () => {
       
       const mockZip = {
         file: vi.fn().mockReturnValue(mockCommentsFile)
-      };
+      } as unknown as JSZip;
       
       vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip);
       
