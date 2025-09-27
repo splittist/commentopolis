@@ -8,16 +8,6 @@ export const CenterPanel: React.FC = () => {
   return (
     <Panel state="normal" position="center">
       <div className="p-8 h-full flex flex-col">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Commentopolis
-          </h1>
-          <p className="text-lg text-gray-600">
-            Comment-centric document exploration
-          </p>
-        </div>
-
         {/* Main content area */}
         <div className="flex-1 bg-gray-50 rounded-lg p-6 overflow-auto">
           <div className="max-w-4xl mx-auto">
