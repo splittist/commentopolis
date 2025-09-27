@@ -87,7 +87,7 @@ export const CommentListDemo: React.FC<CommentListDemoProps> = ({ className = ''
 
   // This is a hack for demo purposes - we'll temporarily modify the context
   // In a real app, this would be handled differently
-  const { documents: contextDocuments, comments: contextComments, activeDocumentId } = useDocumentContext();
+  const { documents: contextDocuments, comments: contextComments, activeDocumentId, addDemoComments, removeDemoComments, addDemoDocuments, removeDemoDocuments } = useDocumentContext();
 
   useEffect(() => {
     if (showDemo && !originalState) {
@@ -103,9 +103,25 @@ export const CommentListDemo: React.FC<CommentListDemoProps> = ({ className = ''
       if (contextDocuments.length === 0) {
         // Only show demo if there are no real documents
         console.log('Demo mode activated with sample data');
+        // Add demo comments and documents to global context
+        if (addDemoComments) {
+          addDemoComments(sampleComments);
+        }
+        if (addDemoDocuments) {
+          addDemoDocuments(sampleDocuments);
+        }
       }
+    } else if (!showDemo && originalState) {
+      // Clean up demo data when hiding demo
+      if (removeDemoComments) {
+        removeDemoComments();
+      }
+      if (removeDemoDocuments) {
+        removeDemoDocuments();
+      }
+      setOriginalState(null);
     }
-  }, [showDemo, originalState, contextDocuments, contextComments, activeDocumentId]);
+  }, [showDemo, originalState, contextDocuments, contextComments, activeDocumentId, addDemoComments, removeDemoComments, addDemoDocuments, removeDemoDocuments]);
 
   if (!showDemo) {
     return (
@@ -162,6 +178,9 @@ const DemoCommentList: React.FC = () => {
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'author-asc' | 'author-desc'>('date-desc');
+  
+  // Get access to the global context to sync selected comment
+  const { setSelectedComment } = useDocumentContext();
 
   // Simulate the CommentList logic but with our demo data
   const filteredComments = activeDocumentId 
@@ -199,7 +218,10 @@ const DemoCommentList: React.FC = () => {
   };
 
   const handleCommentClick = (commentId: string) => {
-    setSelectedCommentId(commentId === selectedCommentId ? null : commentId);
+    const newSelectedId = commentId === selectedCommentId ? null : commentId;
+    setSelectedCommentId(newSelectedId);
+    // Also update the global context so RightPanel can show the comment details
+    setSelectedComment(newSelectedId);
   };
 
   const groupedComments = activeDocumentId 
