@@ -10,6 +10,7 @@ export const useDocuments = (): DocumentStateManager => {
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [comments, setComments] = useState<DocumentComment[]>([]);
+  const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
 
   const addDocument = useCallback(async (file: File) => {
     // Validate file type
@@ -116,12 +117,18 @@ export const useDocuments = (): DocumentStateManager => {
     }
   }, [documents]);
 
+  const setSelectedComment = useCallback((id: string | null) => {
+    setSelectedCommentId(id);
+  }, []);
+
   return {
     documents,
     activeDocumentId,
     comments,
+    selectedCommentId,
     addDocument,
     removeDocument,
     setActiveDocument,
+    setSelectedComment,
   };
 };

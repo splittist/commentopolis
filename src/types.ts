@@ -46,7 +46,9 @@ export interface DocumentStateManager {
   documents: UploadedDocument[];
   activeDocumentId: string | null;
   comments: DocumentComment[]; // All comments from all documents
+  selectedCommentId: string | null; // Currently selected comment for right panel
   addDocument: (file: File) => void;
   removeDocument: (id: string) => void;
   setActiveDocument: (id: string | null) => void;
+  setSelectedComment: (id: string | null) => void;
 }
