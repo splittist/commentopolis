@@ -256,7 +256,7 @@ describe('useDocuments', () => {
     // Mock crypto.randomUUID to return predictable IDs
     let uuidCounter = 0;
     const mockRandomUUID = vi.fn(() => `doc-${++uuidCounter}`);
-    Object.defineProperty(global.crypto, 'randomUUID', {
+    Object.defineProperty(globalThis.crypto, 'randomUUID', {
       value: mockRandomUUID,
       writable: true
     });
