@@ -18,6 +18,10 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
 
   const renderMinimizedContent = () => (
     <div className="flex flex-col items-center space-y-4 p-2">
+      {/* App indicator */}
+      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+        <span className="text-white text-xs font-bold">C</span>
+      </div>
       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
         <span className="text-blue-600">📂</span>
       </div>
@@ -37,6 +41,13 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
 
   const renderNormalContent = () => (
     <div className="p-4 space-y-4">
+      {/* App Header */}
+      <div className="mb-4 pb-4 border-b border-gray-200">
+        <h1 className="text-lg font-bold text-gray-900">
+          Commentopolis
+        </h1>
+      </div>
+      
       <div className="space-y-2">
         <h3 className="font-semibold text-gray-800">Documents</h3>
         <DocumentUpload className="mb-4" />
@@ -84,6 +95,13 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
 
   const renderFocusedContent = () => (
     <div className="p-4 space-y-6">
+      {/* App Header */}
+      <div className="mb-4 pb-4 border-b border-gray-200">
+        <h1 className="text-lg font-bold text-gray-900">
+          Commentopolis
+        </h1>
+      </div>
+      
       <div>
         <h2 className="text-xl font-bold text-gray-800 mb-4">Document Center</h2>
         

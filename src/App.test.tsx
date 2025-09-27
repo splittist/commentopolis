@@ -3,14 +3,14 @@ import { describe, it, expect } from 'vitest'
 import App from './App'
 
 describe('App', () => {
-  it('renders the main heading', () => {
+  it('renders the main heading in left panel', () => {
     render(<App />)
     expect(screen.getByText('Commentopolis')).toBeInTheDocument()
   })
 
-  it('renders the subtitle', () => {
+  it('does not render the subtitle (removed)', () => {
     render(<App />)
-    expect(screen.getByText('Comment-centric document exploration')).toBeInTheDocument()
+    expect(screen.queryByText('Comment-centric document exploration')).not.toBeInTheDocument()
   })
 
   it('renders three-panel layout', () => {
