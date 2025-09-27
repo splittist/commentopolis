@@ -18,6 +18,17 @@ export interface PanelStateManager {
   toggleRightPanel: () => void;
 }
 
+// Comment data extracted from .docx files
+export interface DocumentComment {
+  id: string;
+  author: string;
+  initial?: string;
+  date: Date;
+  text: string;
+  documentId: string;
+  reference?: string; // Reference to the commented text/location
+}
+
 // Document upload and management
 export interface UploadedDocument {
   id: string;
@@ -26,11 +37,15 @@ export interface UploadedDocument {
   uploadDate: Date;
   size: number;
   type: string;
+  comments?: DocumentComment[]; // Comments extracted from the document
+  isProcessing?: boolean; // Flag to indicate if document is being parsed
+  processingError?: string; // Error message if parsing failed
 }
 
 export interface DocumentStateManager {
   documents: UploadedDocument[];
   activeDocumentId: string | null;
+  comments: DocumentComment[]; // All comments from all documents
   addDocument: (file: File) => void;
   removeDocument: (id: string) => void;
   setActiveDocument: (id: string | null) => void;

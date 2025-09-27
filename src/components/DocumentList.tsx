@@ -73,7 +73,28 @@ export const DocumentList: React.FC<DocumentListProps> = ({
                       Active
                     </span>
                   )}
+                  {doc.isProcessing && (
+                    <span className="text-xs px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full animate-pulse">
+                      Processing...
+                    </span>
+                  )}
                 </div>
+                
+                {/* Comments info */}
+                {doc.comments && doc.comments.length > 0 && (
+                  <div className="flex items-center mt-1 text-xs text-green-600 gap-1">
+                    <span>💬</span>
+                    <span>{doc.comments.length} comment{doc.comments.length !== 1 ? 's' : ''}</span>
+                  </div>
+                )}
+                
+                {/* Processing error */}
+                {doc.processingError && (
+                  <div className="flex items-center mt-1 text-xs text-red-600 gap-1">
+                    <span>⚠️</span>
+                    <span className="truncate">Error: {doc.processingError}</span>
+                  </div>
+                )}
                 
                 {showDetails && (
                   <div className="flex items-center mt-1 text-xs text-gray-500 gap-2">
