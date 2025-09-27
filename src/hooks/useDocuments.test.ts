@@ -243,4 +243,87 @@ describe('useDocuments', () => {
 
     expect(result.current.activeDocumentId).toBe(documentId);
   });
+
+  it('handles document selection functions', async () => {
+    const { parseDocxComments, isValidDocxFile } = await import('../utils/docxParser');
+    
+    vi.mocked(isValidDocxFile).mockReturnValue(true);
+    vi.mocked(parseDocxComments).mockResolvedValue({
+      comments: [],
+      error: undefined
+    });
+
+    // Mock crypto.randomUUID to return predictable IDs
+    let uuidCounter = 0;
+    const mockRandomUUID = vi.fn(() => `doc-${++uuidCounter}`);
+    Object.defineProperty(global.crypto, 'randomUUID', {
+      value: mockRandomUUID,
+      writable: true
+    });
+
+    const { result } = renderHook(() => useDocuments());
+    
+    // Add multiple documents
+    const mockFile1 = new File(['test content 1'], 'test1.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+    const mockFile2 = new File(['test content 2'], 'test2.docx', {
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+
+    await act(async () => {
+      await result.current.addDocument(mockFile1);
+    });
+    
+    await act(async () => {
+      await result.current.addDocument(mockFile2);
+    });
+
+    const doc1Id = result.current.documents[0].id;
+    const doc2Id = result.current.documents[1].id;
+
+    // Initially no documents selected
+    expect(result.current.selectedDocumentIds).toEqual([]);
+
+    // Select first document
+    act(() => {
+      result.current.selectDocument(doc1Id);
+    });
+    expect(result.current.selectedDocumentIds).toEqual([doc1Id]);
+
+    // Select second document
+    act(() => {
+      result.current.selectDocument(doc2Id);
+    });
+    expect(result.current.selectedDocumentIds).toEqual([doc1Id, doc2Id]);
+
+    // Deselect first document
+    act(() => {
+      result.current.deselectDocument(doc1Id);
+    });
+    expect(result.current.selectedDocumentIds).toEqual([doc2Id]);
+
+    // Select all documents
+    act(() => {
+      result.current.selectAllDocuments();
+    });
+    expect(result.current.selectedDocumentIds).toEqual([doc1Id, doc2Id]);
+
+    // Deselect all documents
+    act(() => {
+      result.current.deselectAllDocuments();
+    });
+    expect(result.current.selectedDocumentIds).toEqual([]);
+
+    // Test toggle functionality
+    act(() => {
+      result.current.toggleDocumentSelection(doc1Id);
+    });
+    expect(result.current.selectedDocumentIds).toEqual([doc1Id]);
+
+    act(() => {
+      result.current.toggleDocumentSelection(doc1Id);
+    });
+    expect(result.current.selectedDocumentIds).toEqual([]);
+  });
 });

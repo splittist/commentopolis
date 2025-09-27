@@ -9,6 +9,7 @@ import { parseDocxComments, isValidDocxFile } from '../utils/docxParser';
 export const useDocuments = (): DocumentStateManager => {
   const [documents, setDocuments] = useState<UploadedDocument[]>([]);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [comments, setComments] = useState<DocumentComment[]>([]);
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
 
@@ -98,6 +99,9 @@ export const useDocuments = (): DocumentStateManager => {
     // Remove associated comments
     setComments(prev => prev.filter(comment => comment.documentId !== id));
     
+    // Remove from selected documents
+    setSelectedDocumentIds(prev => prev.filter(docId => docId !== id));
+    
     if (activeDocumentId === id) {
       setActiveDocumentId(null);
     }
@@ -121,14 +125,52 @@ export const useDocuments = (): DocumentStateManager => {
     setSelectedCommentId(id);
   }, []);
 
+  // New methods for multiple document selection
+  const selectDocument = useCallback((id: string) => {
+    setSelectedDocumentIds(prev => {
+      if (!prev.includes(id)) {
+        return [...prev, id];
+      }
+      return prev;
+    });
+  }, []);
+
+  const deselectDocument = useCallback((id: string) => {
+    setSelectedDocumentIds(prev => prev.filter(docId => docId !== id));
+  }, []);
+
+  const selectAllDocuments = useCallback(() => {
+    setSelectedDocumentIds(documents.map(doc => doc.id));
+  }, [documents]);
+
+  const deselectAllDocuments = useCallback(() => {
+    setSelectedDocumentIds([]);
+  }, []);
+
+  const toggleDocumentSelection = useCallback((id: string) => {
+    setSelectedDocumentIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(docId => docId !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  }, []);
+
   return {
     documents,
     activeDocumentId,
+    selectedDocumentIds,
     comments,
     selectedCommentId,
     addDocument,
     removeDocument,
     setActiveDocument,
     setSelectedComment,
+    selectDocument,
+    deselectDocument,
+    selectAllDocuments,
+    deselectAllDocuments,
+    toggleDocumentSelection,
   };
 };

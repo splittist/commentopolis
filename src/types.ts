@@ -44,11 +44,18 @@ export interface UploadedDocument {
 
 export interface DocumentStateManager {
   documents: UploadedDocument[];
-  activeDocumentId: string | null;
+  activeDocumentId: string | null; // Keep for backward compatibility, will be deprecated
+  selectedDocumentIds: string[]; // New: array of selected document IDs
   comments: DocumentComment[]; // All comments from all documents
   selectedCommentId: string | null; // Currently selected comment for right panel
   addDocument: (file: File) => void;
   removeDocument: (id: string) => void;
-  setActiveDocument: (id: string | null) => void;
+  setActiveDocument: (id: string | null) => void; // Keep for backward compatibility
   setSelectedComment: (id: string | null) => void;
+  // New methods for multiple selection
+  selectDocument: (id: string) => void;
+  deselectDocument: (id: string) => void;
+  selectAllDocuments: () => void;
+  deselectAllDocuments: () => void;
+  toggleDocumentSelection: (id: string) => void;
 }

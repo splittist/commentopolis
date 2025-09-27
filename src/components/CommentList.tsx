@@ -12,16 +12,24 @@ interface CommentListProps {
  * CommentList component for displaying extracted comments from documents
  */
 export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
-  const { documents, activeDocumentId, comments, selectedCommentId, setSelectedComment } = useDocumentContext();
+  const { documents, activeDocumentId, selectedDocumentIds, comments, selectedCommentId, setSelectedComment } = useDocumentContext();
   const [sortBy, setSortBy] = useState<SortOption>('date-desc');
 
-  // Filter comments based on active document(s)
+  // Filter comments based on selected document(s)
   const filteredComments = useMemo(() => {
+    // If there are selected documents, show comments from those
+    if (selectedDocumentIds.length > 0) {
+      return comments.filter(comment => selectedDocumentIds.includes(comment.documentId));
+    }
+    
+    // Fall back to activeDocumentId for backward compatibility
     if (activeDocumentId) {
       return comments.filter(comment => comment.documentId === activeDocumentId);
     }
-    return comments; // Show all comments if no specific document is active
-  }, [comments, activeDocumentId]);
+    
+    // If no documents are selected, show no comments
+    return [];
+  }, [comments, selectedDocumentIds, activeDocumentId]);
 
   // Sort comments based on selected option
   const sortedComments = useMemo(() => {
@@ -63,12 +71,18 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
     setSelectedComment(commentId === selectedCommentId ? null : commentId);
   };
 
-  // Group comments by document if showing all documents
+  // Group comments by document if showing multiple documents
   const groupedComments = useMemo(() => {
-    if (activeDocumentId) {
-      return { [activeDocumentId]: sortedComments };
+    // If we have selected documents or activeDocumentId, group appropriately
+    const isShowingMultiple = selectedDocumentIds.length > 1;
+    
+    if (!isShowingMultiple && (selectedDocumentIds.length === 1 || activeDocumentId)) {
+      // Single document view
+      const singleDocId = selectedDocumentIds.length === 1 ? selectedDocumentIds[0] : activeDocumentId!;
+      return { [singleDocId]: sortedComments };
     }
     
+    // Multiple documents view
     const groups: Record<string, DocumentComment[]> = {};
     sortedComments.forEach(comment => {
       if (!groups[comment.documentId]) {
@@ -77,7 +91,7 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
       groups[comment.documentId].push(comment);
     });
     return groups;
-  }, [sortedComments, activeDocumentId]);
+  }, [sortedComments, selectedDocumentIds, activeDocumentId]);
 
   if (sortedComments.length === 0) {
     return (
@@ -87,7 +101,9 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
         <p className="text-sm text-gray-500 text-center">
           {documents.length === 0 
             ? 'Upload a .docx document to see extracted comments'
-            : 'No comments were found in the selected document(s)'
+            : selectedDocumentIds.length === 0 && !activeDocumentId
+              ? 'Select one or more documents to view their comments'
+              : 'No comments were found in the selected document(s)'
           }
         </p>
       </div>
@@ -99,7 +115,17 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
       {/* Header with sort controls */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-800">
-          Comments {activeDocumentId ? `(${getDocumentName(activeDocumentId)})` : `(${sortedComments.length})`}
+          Comments {(() => {
+            if (selectedDocumentIds.length === 1) {
+              return `(${getDocumentName(selectedDocumentIds[0])})`;
+            } else if (selectedDocumentIds.length > 1) {
+              return `(${selectedDocumentIds.length} documents, ${sortedComments.length} total)`;
+            } else if (activeDocumentId) {
+              return `(${getDocumentName(activeDocumentId)})`;
+            } else {
+              return `(${sortedComments.length})`;
+            }
+          })()}
         </h2>
         <select
           value={sortBy}
@@ -117,8 +143,8 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
       <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-auto">
         {Object.entries(groupedComments).map(([documentId, docComments]) => (
           <div key={documentId}>
-            {/* Document header (only show if multiple documents) */}
-            {!activeDocumentId && Object.keys(groupedComments).length > 1 && (
+            {/* Document header (only show if multiple documents are selected) */}
+            {selectedDocumentIds.length > 1 && (
               <div className="sticky top-0 bg-gray-50 px-3 py-2 border-b border-gray-200 mb-3">
                 <h3 className="font-medium text-gray-700">
                   📄 {getDocumentName(documentId)} ({docComments.length})
