@@ -4,3 +4,4 @@ export { RightPanel } from './RightPanel';
 export { CenterPanel } from './CenterPanel';
 export { DocumentUpload } from './DocumentUpload';
 export { DocumentList } from './DocumentList';
+export { CommentList } from './CommentList';
