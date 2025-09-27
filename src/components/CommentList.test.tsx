@@ -66,6 +66,7 @@ describe('CommentList', () => {
     mockUseDocumentContext.mockReturnValue({
       documents: mockDocuments,
       activeDocumentId: null,
+      selectedDocumentIds: [],
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
@@ -76,6 +77,7 @@ describe('CommentList', () => {
     mockUseDocumentContext.mockReturnValue({
       documents: [],
       activeDocumentId: null,
+      selectedDocumentIds: [],
       comments: [],
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
@@ -90,16 +92,15 @@ describe('CommentList', () => {
   it('should render all comments when no active document is selected', () => {
     render(<CommentList />);
 
-    expect(screen.getByText('Comments (3)')).toBeInTheDocument();
-    expect(screen.getByText('This is the first comment')).toBeInTheDocument();
-    expect(screen.getByText('This is the second comment')).toBeInTheDocument();
-    expect(screen.getByText('This is a comment from another document')).toBeInTheDocument();
+    expect(screen.getByText('No comments found')).toBeInTheDocument();
+    expect(screen.getByText('Select one or more documents to view their comments')).toBeInTheDocument();
   });
 
   it('should render only comments from active document when one is selected', () => {
     mockUseDocumentContext.mockReturnValue({
       documents: mockDocuments,
       activeDocumentId: 'doc1',
+      selectedDocumentIds: [],
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
@@ -113,7 +114,55 @@ describe('CommentList', () => {
     expect(screen.queryByText('This is a comment from another document')).not.toBeInTheDocument();
   });
 
+  it('should render comments from selected documents', () => {
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1'],
+      comments: mockComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
+    render(<CommentList />);
+
+    expect(screen.getByText('Comments (Test Document 1.docx)')).toBeInTheDocument();
+    expect(screen.getByText('This is the first comment')).toBeInTheDocument();
+    expect(screen.getByText('This is the second comment')).toBeInTheDocument();
+    expect(screen.queryByText('This is a comment from another document')).not.toBeInTheDocument();
+  });
+
+  it('should render comments from multiple selected documents', () => {
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1', 'doc2'],
+      comments: mockComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
+    render(<CommentList />);
+
+    expect(screen.getByText('Comments (2 documents, 3 total)')).toBeInTheDocument();
+    expect(screen.getByText('This is the first comment')).toBeInTheDocument();
+    expect(screen.getByText('This is the second comment')).toBeInTheDocument();
+    expect(screen.getByText('This is a comment from another document')).toBeInTheDocument();
+    // Should show document headers for multiple documents
+    expect(screen.getByText('📄 Test Document 1.docx (2)')).toBeInTheDocument();
+    expect(screen.getByText('📄 Test Document 2.docx (1)')).toBeInTheDocument();
+  });
+
   it('should handle comment selection', () => {
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1', 'doc2'],
+      comments: mockComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
     render(<CommentList />);
 
     const firstComment = screen.getByText('This is the first comment').closest('div');
@@ -127,6 +176,7 @@ describe('CommentList', () => {
     mockUseDocumentContext.mockReturnValue({
       documents: mockDocuments,
       activeDocumentId: null,
+      selectedDocumentIds: ['doc1', 'doc2'],
       comments: mockComments,
       selectedCommentId: 'comment1',
       setSelectedComment: mockSetSelectedComment,
@@ -141,6 +191,7 @@ describe('CommentList', () => {
     mockUseDocumentContext.mockReturnValue({
       documents: mockDocuments,
       activeDocumentId: null,
+      selectedDocumentIds: ['doc1', 'doc2'],
       comments: mockComments,
       selectedCommentId: 'comment1',
       setSelectedComment: mockSetSelectedComment,
@@ -154,6 +205,15 @@ describe('CommentList', () => {
   });
 
   it('should render author initials and names correctly', () => {
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1', 'doc2'],
+      comments: mockComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
     render(<CommentList />);
 
     expect(screen.getByText('JD')).toBeInTheDocument();
@@ -163,6 +223,15 @@ describe('CommentList', () => {
   });
 
   it('should display comment references', () => {
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1', 'doc2'],
+      comments: mockComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
     render(<CommentList />);
 
     expect(screen.getByText('Comment 1')).toBeInTheDocument();
@@ -171,6 +240,15 @@ describe('CommentList', () => {
   });
 
   it('should handle sorting by date descending (default)', () => {
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1', 'doc2'],
+      comments: mockComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
     render(<CommentList />);
 
     const commentElements = screen.getAllByText(/This is/);
@@ -181,6 +259,15 @@ describe('CommentList', () => {
   });
 
   it('should allow sorting by author ascending', () => {
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1', 'doc2'],
+      comments: mockComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
     render(<CommentList />);
 
     const sortSelect = screen.getByRole('combobox');
@@ -194,6 +281,15 @@ describe('CommentList', () => {
   });
 
   it('should show document groupings when multiple documents have comments', () => {
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1', 'doc2'],
+      comments: mockComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
     render(<CommentList />);
 
     expect(screen.getByText('📄 Test Document 1.docx (2)')).toBeInTheDocument();
@@ -204,6 +300,7 @@ describe('CommentList', () => {
     mockUseDocumentContext.mockReturnValue({
       documents: mockDocuments,
       activeDocumentId: 'doc1',
+      selectedDocumentIds: [],
       comments: [],
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
