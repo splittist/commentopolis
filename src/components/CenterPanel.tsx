@@ -2,17 +2,26 @@ import React, { useState } from 'react';
 import { Panel } from './Panel';
 import { CommentList } from './CommentList';
 import { CommentListDemo } from './CommentListDemo';
+import { DocumentViewer } from './DocumentViewer';
 import { useDocumentContext } from '../hooks/useDocumentContext';
 
 /**
  * Center Panel component - main content area
  */
 export const CenterPanel: React.FC = () => {
-  const { documents } = useDocumentContext();
+  const { documents, activeDocumentId } = useDocumentContext();
   const [showDemo, setShowDemo] = useState(false);
 
   // Show CommentList if there are documents uploaded, otherwise show welcome
   const showComments = documents.length > 0;
+  
+  // Find the active document if one is set
+  const activeDocument = activeDocumentId 
+    ? documents.find(doc => doc.id === activeDocumentId)
+    : null;
+  
+  // Show document content if there's an active document with transformed content
+  const showDocumentContent = activeDocument && activeDocument.transformedContent;
 
   return (
     <Panel state="normal" position="center">
@@ -20,7 +29,9 @@ export const CenterPanel: React.FC = () => {
         {/* Main content area */}
         <div className="flex-1 bg-gray-50 rounded-lg p-6 overflow-auto">
           <div className="max-w-4xl mx-auto">
-            {showComments ? (
+            {showDocumentContent && activeDocument ? (
+              <DocumentViewer document={activeDocument} />
+            ) : showComments ? (
               <CommentList />
             ) : showDemo ? (
               <CommentListDemo />

@@ -48,6 +48,11 @@ export interface UploadedDocument {
     commentsXml?: Document;
     commentsExtendedXml?: Document;
   };
+  // Transformed HTML content
+  transformedContent?: {
+    html: string;
+    plainText: string;
+  };
 }
 
 // Comment filter types
