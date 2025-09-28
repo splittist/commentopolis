@@ -1,7 +1,16 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import React from 'react';
 import { CommentList } from './CommentList';
+import { CommentFilterProvider } from '../contexts/CommentFilterContext';
 import type { DocumentComment, UploadedDocument } from '../types';
+
+// Test wrapper component that provides the CommentFilterProvider
+const TestWrapper = ({ children }: { children: React.ReactNode }) => (
+  <CommentFilterProvider>
+    {children}
+  </CommentFilterProvider>
+);
 
 // Mock the useDocumentContext hook
 const mockSetSelectedComment = vi.fn();
@@ -83,14 +92,14 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     expect(screen.getByText('No comments found')).toBeInTheDocument();
     expect(screen.getByText('Upload a .docx document to see extracted comments')).toBeInTheDocument();
   });
 
   it('should render all comments when no active document is selected', () => {
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     expect(screen.getByText('No comments found')).toBeInTheDocument();
     expect(screen.getByText('Select one or more documents to view their comments')).toBeInTheDocument();
@@ -106,7 +115,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     expect(screen.getByText('Comments (Test Document 1.docx)')).toBeInTheDocument();
     expect(screen.getByText('This is the first comment')).toBeInTheDocument();
@@ -124,7 +133,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     expect(screen.getByText('Comments (Test Document 1.docx)')).toBeInTheDocument();
     expect(screen.getByText('This is the first comment')).toBeInTheDocument();
@@ -142,7 +151,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     expect(screen.getByText('Comments (2 documents, 3 total)')).toBeInTheDocument();
     expect(screen.getByText('This is the first comment')).toBeInTheDocument();
@@ -163,7 +172,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     const firstComment = screen.getByText('This is the first comment').closest('div');
     expect(firstComment).toBeInTheDocument();
@@ -182,7 +191,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     expect(screen.getByText('✓ Selected for review')).toBeInTheDocument();
   });
@@ -197,7 +206,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     const firstComment = screen.getByText('This is the first comment').closest('div');
     fireEvent.click(firstComment!);
@@ -214,7 +223,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     expect(screen.getByText('JD')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
@@ -232,7 +241,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     expect(screen.getByText('Comment 1')).toBeInTheDocument();
     expect(screen.getByText('Comment 2')).toBeInTheDocument();
@@ -249,7 +258,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     const commentElements = screen.getAllByText(/This is/);
     // Should be sorted by date descending (newest first)
@@ -268,7 +277,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     const sortSelect = screen.getByRole('combobox');
     fireEvent.change(sortSelect, { target: { value: 'author-asc' } });
@@ -290,7 +299,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     expect(screen.getByText('📄 Test Document 1.docx (2)')).toBeInTheDocument();
     expect(screen.getByText('📄 Test Document 2.docx (1)')).toBeInTheDocument();
@@ -306,7 +315,7 @@ describe('CommentList', () => {
       setSelectedComment: mockSetSelectedComment,
     });
 
-    render(<CommentList />);
+    render(<CommentList />, { wrapper: TestWrapper });
 
     expect(screen.getByText('No comments found')).toBeInTheDocument();
     expect(screen.getByText('No comments were found in the selected document(s)')).toBeInTheDocument();

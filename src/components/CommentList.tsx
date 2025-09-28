@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { DocumentComment } from '../types';
 import { useDocumentContext } from '../hooks/useDocumentContext';
+import { useCommentFilterContext } from '../hooks/useCommentFilterContext';
 
 export type SortOption = 'date-desc' | 'date-asc' | 'author-asc' | 'author-desc';
 
@@ -13,10 +14,11 @@ interface CommentListProps {
  */
 export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
   const { documents, activeDocumentId, selectedDocumentIds, comments, selectedCommentId, setSelectedComment } = useDocumentContext();
+  const { getFilteredComments } = useCommentFilterContext();
   const [sortBy, setSortBy] = useState<SortOption>('date-desc');
 
   // Filter comments based on selected document(s)
-  const filteredComments = useMemo(() => {
+  const selectedComments = useMemo(() => {
     // If there are selected documents, show comments from those
     if (selectedDocumentIds.length > 0) {
       return comments.filter(comment => selectedDocumentIds.includes(comment.documentId));
@@ -30,6 +32,11 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
     // If no documents are selected, show no comments
     return [];
   }, [comments, selectedDocumentIds, activeDocumentId]);
+
+  // Apply comment filters to the selected comments
+  const filteredComments = useMemo(() => {
+    return getFilteredComments(selectedComments);
+  }, [selectedComments, getFilteredComments]);
 
   // Sort comments based on selected option
   const sortedComments = useMemo(() => {

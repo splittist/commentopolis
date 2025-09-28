@@ -3,6 +3,7 @@ import type { PanelState } from '../types';
 import { Panel } from './Panel';
 import { DocumentUpload } from './DocumentUpload';
 import { DocumentList } from './DocumentList';
+import { CommentFilters } from './CommentFilters';
 import { useDocumentContext } from '../hooks/useDocumentContext';
 
 interface LeftPanelProps {
@@ -59,6 +60,13 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
           <DocumentList maxHeight="max-h-32" showDetails={false} />
         </div>
       )}
+
+      {/* Comment Filters - positioned below document list */}
+      {documents.length > 0 && (
+        <div className="pt-4 border-t border-gray-200">
+          <CommentFilters />
+        </div>
+      )}
       
       <div className="pt-4 border-t border-gray-200">
         <div className="space-y-2">
@@ -112,6 +120,13 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
             <div>
               <h3 className="font-semibold text-gray-800 mb-3">Uploaded Documents</h3>
               <DocumentList maxHeight="max-h-64" showDetails={true} />
+            </div>
+          )}
+
+          {/* Comment Filters - positioned below document list */}
+          {documents.length > 0 && (
+            <div className="pt-4 border-t border-gray-200">
+              <CommentFilters />
             </div>
           )}
         </div>

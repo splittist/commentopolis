@@ -42,6 +42,26 @@ export interface UploadedDocument {
   processingError?: string; // Error message if parsing failed
 }
 
+// Comment filter types
+export interface CommentFilters {
+  author: string; // Empty string means no filter
+  dateRange: {
+    start: Date | null;
+    end: Date | null;
+  };
+  searchText: string; // Full-text search
+}
+
+export interface CommentFilterState {
+  filters: CommentFilters;
+  setAuthorFilter: (author: string) => void;
+  setDateRangeFilter: (start: Date | null, end: Date | null) => void;
+  setSearchTextFilter: (searchText: string) => void;
+  resetFilters: () => void;
+  getFilteredComments: (comments: DocumentComment[]) => DocumentComment[];
+  getUniqueAuthors: (comments: DocumentComment[]) => string[];
+}
+
 export interface DocumentStateManager {
   documents: UploadedDocument[];
   activeDocumentId: string | null; // Keep for backward compatibility, will be deprecated
