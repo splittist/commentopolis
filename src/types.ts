@@ -40,6 +40,14 @@ export interface UploadedDocument {
   comments?: DocumentComment[]; // Comments extracted from the document
   isProcessing?: boolean; // Flag to indicate if document is being parsed
   processingError?: string; // Error message if parsing failed
+  // Additional XML metadata for advanced features
+  xmlMetadata?: {
+    documentXml?: Document;
+    stylesXml?: Document;
+    numberingXml?: Document;
+    commentsXml?: Document;
+    commentsExtendedXml?: Document;
+  };
 }
 
 // Comment filter types
