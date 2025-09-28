@@ -6,3 +6,4 @@ export { DocumentUpload } from './DocumentUpload';
 export { DocumentList } from './DocumentList';
 export { CommentList } from './CommentList';
 export { CommentDetails } from './CommentDetails';
+export { CommentFilters } from './CommentFilters';
