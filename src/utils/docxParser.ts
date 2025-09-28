@@ -4,6 +4,34 @@ import type { DocumentComment } from '../types';
 export interface DocxParseResult {
   comments: DocumentComment[];
   error?: string;
+  // Additional XML DOM objects
+  documentXml?: Document;
+  stylesXml?: Document;
+  numberingXml?: Document;
+  commentsXml?: Document;
+  commentsExtendedXml?: Document;
+}
+
+/**
+ * Parse XML string into DOM object with error handling
+ */
+function parseXmlToDom(xmlText: string, filename: string): Document | undefined {
+  try {
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+    
+    // Check for parsing errors
+    const parserError = xmlDoc.querySelector('parsererror');
+    if (parserError) {
+      console.warn(`XML parsing error in ${filename}:`, parserError.textContent);
+      return undefined;
+    }
+    
+    return xmlDoc;
+  } catch (error) {
+    console.error(`Error parsing XML for ${filename}:`, error);
+    return undefined;
+  }
 }
 
 /**
@@ -12,19 +40,12 @@ export interface DocxParseResult {
 function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[] {
   const comments: DocumentComment[] = [];
   
+  const xmlDoc = parseXmlToDom(xmlText, 'comments.xml');
+  if (!xmlDoc) {
+    return comments;
+  }
+  
   try {
-    // Create a simple parser for the comments XML
-    // Note: This is a basic implementation. In production, you might want to use a proper XML parser
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-    
-    // Check for parsing errors
-    const parserError = xmlDoc.querySelector('parsererror');
-    if (parserError) {
-      console.warn('XML parsing error:', parserError.textContent);
-      return comments;
-    }
-    
     // Find all comment elements
     const commentElements = xmlDoc.querySelectorAll('w\\:comment, comment');
     
@@ -66,7 +87,7 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
 }
 
 /**
- * Parse a .docx file to extract comments
+ * Parse a .docx file to extract comments and additional XML parts
  */
 export async function parseDocxComments(
   file: File, 
@@ -79,27 +100,80 @@ export async function parseDocxComments(
     // Load the docx file as a zip archive
     const zip = await JSZip.loadAsync(arrayBuffer);
     
-    // Look for comments file
-    const commentsFile = zip.file('word/comments.xml');
+    // Define XML files to extract
+    const xmlFiles = {
+      document: 'word/document.xml',
+      styles: 'word/styles.xml',
+      numbering: 'word/numbering.xml',
+      comments: 'word/comments.xml',
+      commentsExtended: 'word/commentsExtended.xml'
+    };
     
-    if (!commentsFile) {
-      // No comments found in the document
+    // Extract XML files asynchronously
+    const xmlExtractionPromises = Object.entries(xmlFiles).map(async ([key, filePath]) => {
+      const zipFile = zip.file(filePath);
+      if (zipFile) {
+        try {
+          const xmlContent = await zipFile.async('text');
+          return { key, content: xmlContent, path: filePath };
+        } catch (error) {
+          console.warn(`Error extracting ${filePath}:`, error);
+          return { key, content: null, path: filePath };
+        }
+      }
+      return { key, content: null, path: filePath };
+    });
+    
+    // Wait for all XML extractions to complete
+    const extractedXmls = await Promise.all(xmlExtractionPromises);
+    
+    // Parse XML strings to DOM objects
+    const result: DocxParseResult = {
+      comments: [],
+      error: undefined
+    };
+    
+    extractedXmls.forEach(({ key, content, path }) => {
+      if (content) {
+        const xmlDoc = parseXmlToDom(content, path);
+        if (xmlDoc) {
+          switch (key) {
+            case 'document':
+              result.documentXml = xmlDoc;
+              break;
+            case 'styles':
+              result.stylesXml = xmlDoc;
+              break;
+            case 'numbering':
+              result.numberingXml = xmlDoc;
+              break;
+            case 'comments':
+              result.commentsXml = xmlDoc;
+              // Parse comments for backward compatibility
+              result.comments = parseCommentsXml(content, documentId);
+              break;
+            case 'commentsExtended':
+              result.commentsExtendedXml = xmlDoc;
+              break;
+          }
+        }
+      } else {
+        // Log missing optional files (all except document.xml are optional)
+        if (key !== 'document') {
+          console.log(`Optional file ${path} not found in .docx archive`);
+        }
+      }
+    });
+    
+    // Check if required document.xml is missing
+    if (!result.documentXml) {
       return {
         comments: [],
-        error: undefined
+        error: 'Required document.xml not found in .docx file'
       };
     }
     
-    // Extract comments XML content
-    const commentsXml = await commentsFile.async('text');
-    
-    // Parse the comments XML
-    const comments = parseCommentsXml(commentsXml, documentId);
-    
-    return {
-      comments,
-      error: undefined
-    };
+    return result;
     
   } catch (error) {
     console.error('Error parsing docx file:', error);

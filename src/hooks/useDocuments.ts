@@ -47,14 +47,21 @@ export const useDocuments = (): DocumentStateManager => {
     try {
       const parseResult = await parseDocxComments(file, documentId);
       
-      // Update document with parsed comments
+      // Update document with parsed comments and XML metadata
       setDocuments(prev => prev.map(doc => 
         doc.id === documentId 
           ? { 
               ...doc, 
               comments: parseResult.comments,
               isProcessing: false,
-              processingError: parseResult.error
+              processingError: parseResult.error,
+              xmlMetadata: {
+                documentXml: parseResult.documentXml,
+                stylesXml: parseResult.stylesXml,
+                numberingXml: parseResult.numberingXml,
+                commentsXml: parseResult.commentsXml,
+                commentsExtendedXml: parseResult.commentsExtendedXml,
+              }
             }
           : doc
       ));
