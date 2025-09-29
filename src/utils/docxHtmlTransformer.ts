@@ -8,7 +8,6 @@ import {
   createNumberingCounters, 
   getOrCreateCounter, 
   incrementCounter,
-  type NumberingScheme,
   type NumberingCounters
 } from './numbering';
 
