@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import type { DocumentComment } from '../types';
+import { transformDocumentToHtml, type TransformedContent } from './docxHtmlTransformer';
 
 export interface DocxParseResult {
   comments: DocumentComment[];
@@ -10,6 +11,8 @@ export interface DocxParseResult {
   numberingXml?: Document;
   commentsXml?: Document;
   commentsExtendedXml?: Document;
+  // Transformed HTML content
+  transformedContent?: TransformedContent;
 }
 
 /**
@@ -170,6 +173,18 @@ export async function parseDocxComments(
       return {
         comments: [],
         error: 'Required document.xml not found in .docx file'
+      };
+    }
+
+    // Transform document content to HTML
+    try {
+      result.transformedContent = transformDocumentToHtml(result.documentXml);
+    } catch (error) {
+      console.warn('Error transforming document to HTML:', error);
+      // Don't fail the entire parse operation if HTML transformation fails
+      result.transformedContent = {
+        html: '<p>Error transforming document content to HTML.</p>',
+        plainText: 'Error transforming document content to HTML.'
       };
     }
     

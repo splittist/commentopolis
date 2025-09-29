@@ -61,7 +61,8 @@ export const useDocuments = (): DocumentStateManager => {
                 numberingXml: parseResult.numberingXml,
                 commentsXml: parseResult.commentsXml,
                 commentsExtendedXml: parseResult.commentsExtendedXml,
-              }
+              },
+              transformedContent: parseResult.transformedContent
             }
           : doc
       ));
