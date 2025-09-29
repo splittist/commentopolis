@@ -737,4 +737,168 @@ describe('docxHtmlTransformer', () => {
       });
     });
   });
+
+  describe('tracked changes (revisions)', () => {
+    it('should transform run with insertion tracking', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:ins w:id="1" w:author="John Doe" w:date="2023-12-01T10:00:00Z">
+                <w:r>
+                  <w:t>Inserted text</w:t>
+                </w:r>
+              </w:ins>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="color: #008000; text-decoration: underline">Inserted text</span></p>');
+      expect(result.plainText).toBe('Inserted text');
+    });
+
+    it('should transform run with deletion tracking', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:del w:id="2" w:author="Jane Smith" w:date="2023-12-01T11:00:00Z">
+                <w:r>
+                  <w:t>Deleted text</w:t>
+                </w:r>
+              </w:del>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="color: #ff0000; text-decoration: line-through">Deleted text</span></p>');
+      expect(result.plainText).toBe('Deleted text');
+    });
+
+    it('should transform run with moveFrom tracking', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:moveFrom w:id="3" w:author="Bob Wilson" w:date="2023-12-01T12:00:00Z">
+                <w:r>
+                  <w:t>Moved from here</w:t>
+                </w:r>
+              </w:moveFrom>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="color: #0000ff; text-decoration: line-through">Moved from here</span></p>');
+      expect(result.plainText).toBe('Moved from here');
+    });
+
+    it('should transform run with moveTo tracking', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:moveTo w:id="4" w:author="Alice Brown" w:date="2023-12-01T13:00:00Z">
+                <w:r>
+                  <w:t>Moved to here</w:t>
+                </w:r>
+              </w:moveTo>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="color: #0000ff; text-decoration: underline">Moved to here</span></p>');
+      expect(result.plainText).toBe('Moved to here');
+    });
+
+    it('should handle tracked changes without namespace prefix', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <document>
+          <body>
+            <p>
+              <ins id="1" author="Test User" date="2023-12-01T10:00:00Z">
+                <r>
+                  <t>Inserted without namespace</t>
+                </r>
+              </ins>
+            </p>
+          </body>
+        </document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="color: #008000; text-decoration: underline">Inserted without namespace</span></p>');
+      expect(result.plainText).toBe('Inserted without namespace');
+    });
+
+    it('should handle mixed tracked changes with regular text', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>Regular text </w:t>
+              </w:r>
+              <w:ins w:id="1" w:author="Editor">
+                <w:r>
+                  <w:t>inserted text </w:t>
+                </w:r>
+              </w:ins>
+              <w:del w:id="2" w:author="Editor">
+                <w:r>
+                  <w:t>deleted text </w:t>
+                </w:r>
+              </w:del>
+              <w:r>
+                <w:t>more regular text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p>Regular text <span style="color: #008000; text-decoration: underline">inserted text </span><span style="color: #ff0000; text-decoration: line-through">deleted text </span>more regular text</p>');
+      expect(result.plainText).toBe('Regular text inserted text deleted text more regular text');
+    });
+
+    it('should handle tracked changes with existing formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:ins w:id="1" w:author="Editor">
+                <w:r>
+                  <w:rPr>
+                    <w:b />
+                    <w:i />
+                  </w:rPr>
+                  <w:t>Bold italic inserted text</w:t>
+                </w:r>
+              </w:ins>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="font-weight: bold; font-style: italic; color: #008000; text-decoration: underline">Bold italic inserted text</span></p>');
+      expect(result.plainText).toBe('Bold italic inserted text');
+    });
+  });
 });
