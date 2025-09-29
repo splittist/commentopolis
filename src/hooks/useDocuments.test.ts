@@ -59,7 +59,7 @@ describe('useDocuments', () => {
         documentId: 'mock-uuid-123',
         reference: 'Comment 1'
       }],
-      error: undefined
+      footnotes: [], endnotes: [], error: undefined
     });
 
     const { result } = renderHook(() => useDocuments());
@@ -124,7 +124,7 @@ describe('useDocuments', () => {
     vi.mocked(isValidDocxFile).mockReturnValue(true);
     vi.mocked(parseDocxComments).mockResolvedValue({
       comments: [],
-      error: undefined
+      footnotes: [], endnotes: [], error: undefined
     });
 
     const { result } = renderHook(() => useDocuments());
@@ -152,7 +152,7 @@ describe('useDocuments', () => {
     vi.mocked(isValidDocxFile).mockReturnValue(true);
     vi.mocked(parseDocxComments).mockResolvedValue({
       comments: [],
-      error: 'Invalid document structure'
+      footnotes: [], endnotes: [], error: 'Invalid document structure'
     });
 
     const { result } = renderHook(() => useDocuments());
@@ -188,7 +188,7 @@ describe('useDocuments', () => {
         documentId: 'mock-uuid-123',
         reference: 'Comment 1'
       }],
-      error: undefined
+      footnotes: [], endnotes: [], error: undefined
     });
 
     const { result } = renderHook(() => useDocuments());
@@ -222,7 +222,7 @@ describe('useDocuments', () => {
     vi.mocked(isValidDocxFile).mockReturnValue(true);
     vi.mocked(parseDocxComments).mockResolvedValue({
       comments: [],
-      error: undefined
+      footnotes: [], endnotes: [], error: undefined
     });
 
     const { result } = renderHook(() => useDocuments());
@@ -250,7 +250,7 @@ describe('useDocuments', () => {
     vi.mocked(isValidDocxFile).mockReturnValue(true);
     vi.mocked(parseDocxComments).mockResolvedValue({
       comments: [],
-      error: undefined
+      footnotes: [], endnotes: [], error: undefined
     });
 
     // Mock crypto.randomUUID to return predictable IDs

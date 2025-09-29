@@ -240,5 +240,147 @@ describe('docxParser', () => {
       expect(result.stylesXml).toBeUndefined();
       expect(result.commentsXml).toBeUndefined();
     });
+
+    it('parses footnotes from valid XML', async () => {
+      const { default: JSZip } = await import('jszip');
+      
+      const mockDocumentXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body><w:p><w:r><w:t>Test document</w:t></w:r></w:p></w:body>
+        </w:document>`;
+      
+      const mockFootnotesXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:footnote w:type="separator" w:id="-1">
+            <w:p><w:r><w:separator/></w:r></w:p>
+          </w:footnote>
+          <w:footnote w:type="normal" w:id="1">
+            <w:p><w:r><w:t>This is a footnote content.</w:t></w:r></w:p>
+          </w:footnote>
+        </w:footnotes>`;
+      
+      const mockZip = {
+        file: vi.fn().mockImplementation((path: string) => {
+          const xmlContent = {
+            'word/document.xml': mockDocumentXml,
+            'word/footnotes.xml': mockFootnotesXml
+          };
+          
+          if (path in xmlContent) {
+            return {
+              async: vi.fn().mockResolvedValue(xmlContent[path as keyof typeof xmlContent])
+            };
+          }
+          return null;
+        })
+      };
+      
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      
+      const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
+      
+      expect(result.footnotes).toHaveLength(1);
+      expect(result.footnotes[0]).toMatchObject({
+        id: 'doc-1-footnote-1',
+        type: 'footnote',
+        content: '<p>This is a footnote content.</p>',
+        plainText: 'This is a footnote content.',
+        documentId: 'doc-1',
+        noteType: 'normal'
+      });
+      expect(result.footnotesXml).toBeDefined();
+    });
+
+    it('parses endnotes from valid XML', async () => {
+      const { default: JSZip } = await import('jszip');
+      
+      const mockDocumentXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body><w:p><w:r><w:t>Test document</w:t></w:r></w:p></w:body>
+        </w:document>`;
+      
+      const mockEndnotesXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:endnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:endnote w:type="separator" w:id="-1">
+            <w:p><w:r><w:separator/></w:r></w:p>
+          </w:endnote>
+          <w:endnote w:type="normal" w:id="1">
+            <w:p><w:r><w:t>This is an endnote content.</w:t></w:r></w:p>
+          </w:endnote>
+        </w:endnotes>`;
+      
+      const mockZip = {
+        file: vi.fn().mockImplementation((path: string) => {
+          const xmlContent = {
+            'word/document.xml': mockDocumentXml,
+            'word/endnotes.xml': mockEndnotesXml
+          };
+          
+          if (path in xmlContent) {
+            return {
+              async: vi.fn().mockResolvedValue(xmlContent[path as keyof typeof xmlContent])
+            };
+          }
+          return null;
+        })
+      };
+      
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      
+      const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
+      
+      expect(result.endnotes).toHaveLength(1);
+      expect(result.endnotes[0]).toMatchObject({
+        id: 'doc-1-endnote-1',
+        type: 'endnote',
+        content: '<p>This is an endnote content.</p>',
+        plainText: 'This is an endnote content.',
+        documentId: 'doc-1',
+        noteType: 'normal'
+      });
+      expect(result.endnotesXml).toBeDefined();
+    });
+
+    it('skips separator footnotes and endnotes', async () => {
+      const { default: JSZip } = await import('jszip');
+      
+      const mockDocumentXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body><w:p><w:r><w:t>Test document</w:t></w:r></w:p></w:body>
+        </w:document>`;
+      
+      const mockFootnotesXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:footnote w:type="separator" w:id="-1">
+            <w:p><w:r><w:separator/></w:r></w:p>
+          </w:footnote>
+          <w:footnote w:type="continuationSeparator" w:id="0">
+            <w:p><w:r><w:continuationSeparator/></w:r></w:p>
+          </w:footnote>
+        </w:footnotes>`;
+      
+      const mockZip = {
+        file: vi.fn().mockImplementation((path: string) => {
+          const xmlContent = {
+            'word/document.xml': mockDocumentXml,
+            'word/footnotes.xml': mockFootnotesXml
+          };
+          
+          if (path in xmlContent) {
+            return {
+              async: vi.fn().mockResolvedValue(xmlContent[path as keyof typeof xmlContent])
+            };
+          }
+          return null;
+        })
+      };
+      
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      
+      const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
+      
+      expect(result.footnotes).toHaveLength(0); // Should skip separator footnotes
+      expect(result.footnotesXml).toBeDefined();
+    });
   });
 });

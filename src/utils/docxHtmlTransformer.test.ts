@@ -901,4 +901,190 @@ describe('docxHtmlTransformer', () => {
       expect(result.plainText).toBe('Bold italic inserted text');
     });
   });
+
+  describe('Footnotes and Endnotes', () => {
+    it('should transform footnote references to superscript links', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>This is text with a footnote</w:t>
+              </w:r>
+              <w:r>
+                <w:footnoteReference w:id="1" />
+              </w:r>
+              <w:r>
+                <w:t> and more text.</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const footnotes = [{
+        id: 'doc-1-footnote-1',
+        type: 'footnote' as const,
+        content: '<p>This is a footnote</p>',
+        plainText: 'This is a footnote',
+        documentId: 'doc-1',
+        noteType: 'normal' as const
+      }];
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc, footnotes, []);
+      
+      expect(result.html).toContain('<sup><a href="#footnote-1" id="footnote-ref-1" class="footnote-link">1</a></sup>');
+      expect(result.html).toContain('<div class="footnotes">');
+      expect(result.html).toContain('<div class="footnote" id="footnote-1">');
+      expect(result.html).toContain('<a href="#footnote-ref-1" class="footnote-backlink">1.</a> <p>This is a footnote</p>');
+    });
+
+    it('should transform endnote references to superscript links', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>This is text with an endnote</w:t>
+              </w:r>
+              <w:r>
+                <w:endnoteReference w:id="1" />
+              </w:r>
+              <w:r>
+                <w:t> and more text.</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const endnotes = [{
+        id: 'doc-1-endnote-1',
+        type: 'endnote' as const,
+        content: '<p>This is an endnote</p>',
+        plainText: 'This is an endnote',
+        documentId: 'doc-1',
+        noteType: 'normal' as const
+      }];
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc, [], endnotes);
+      
+      expect(result.html).toContain('<sup><a href="#endnote-1" id="endnote-ref-1" class="endnote-link">1</a></sup>');
+      expect(result.html).toContain('<div class="endnotes">');
+      expect(result.html).toContain('<div class="endnote" id="endnote-1">');
+      expect(result.html).toContain('<a href="#endnote-ref-1" class="endnote-backlink">1.</a> <p>This is an endnote</p>');
+    });
+
+    it('should handle documents with both footnotes and endnotes', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>Text with footnote</w:t>
+              </w:r>
+              <w:r>
+                <w:footnoteReference w:id="1" />
+              </w:r>
+              <w:r>
+                <w:t> and endnote</w:t>
+              </w:r>
+              <w:r>
+                <w:endnoteReference w:id="1" />
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const footnotes = [{
+        id: 'doc-1-footnote-1',
+        type: 'footnote' as const,
+        content: '<p>Footnote content</p>',
+        plainText: 'Footnote content',
+        documentId: 'doc-1',
+        noteType: 'normal' as const
+      }];
+      
+      const endnotes = [{
+        id: 'doc-1-endnote-1',
+        type: 'endnote' as const,
+        content: '<p>Endnote content</p>',
+        plainText: 'Endnote content',
+        documentId: 'doc-1',
+        noteType: 'normal' as const
+      }];
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc, footnotes, endnotes);
+      
+      expect(result.html).toContain('<sup><a href="#footnote-1" id="footnote-ref-1" class="footnote-link">1</a></sup>');
+      expect(result.html).toContain('<sup><a href="#endnote-1" id="endnote-ref-1" class="endnote-link">1</a></sup>');
+      expect(result.html).toContain('<div class="footnotes">');
+      expect(result.html).toContain('<div class="endnotes">');
+      expect(result.plainText).toContain('Footnote content');
+      expect(result.plainText).toContain('Endnote content');
+    });
+
+    it('should handle footnote references without corresponding footnote definitions', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>Text with missing footnote</w:t>
+              </w:r>
+              <w:r>
+                <w:footnoteReference w:id="999" />
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc, [], []);
+      
+      expect(result.html).toContain('Text with missing footnote');
+      expect(result.html).not.toContain('footnote-link');
+      expect(result.html).not.toContain('<div class="footnotes">');
+    });
+
+    it('should skip separator footnotes in output', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>Simple text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const footnotes = [
+        {
+          id: 'doc-1-footnote--1',
+          type: 'footnote' as const,
+          content: '<p>Separator</p>',
+          plainText: 'Separator',
+          documentId: 'doc-1',
+          noteType: 'separator' as const
+        },
+        {
+          id: 'doc-1-footnote-1',
+          type: 'footnote' as const,
+          content: '<p>Normal footnote</p>',
+          plainText: 'Normal footnote',
+          documentId: 'doc-1',
+          noteType: 'normal' as const
+        }
+      ];
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc, footnotes, []);
+      
+      expect(result.html).toContain('<div class="footnotes">');
+      expect(result.html).toContain('Normal footnote');
+      expect(result.html).not.toContain('Separator');
+    });
+  });
 });
