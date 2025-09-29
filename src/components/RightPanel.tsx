@@ -25,6 +25,11 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
     const doc = documents.find(d => d.id === documentId);
     return doc?.name || 'Unknown Document';
   };
+
+  // Helper function to get comment by ID
+  const getCommentById = (commentId: string) => {
+    return comments.find(comment => comment.id === commentId) || null;
+  };
   const renderMinimizedContent = () => (
     <div className="flex flex-col items-center space-y-4 p-2">
       <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -47,6 +52,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
           <CommentDetails 
             comment={selectedComment} 
             getDocumentName={getDocumentName}
+            getCommentById={getCommentById}
           />
         </div>
       );
@@ -98,6 +104,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
           <CommentDetails 
             comment={selectedComment} 
             getDocumentName={getDocumentName}
+            getCommentById={getCommentById}
           />
         </div>
       );

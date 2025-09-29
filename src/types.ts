@@ -27,6 +27,10 @@ export interface DocumentComment {
   text: string;
   documentId: string;
   reference?: string; // Reference to the commented text/location
+  // Extended comment properties
+  done?: boolean; // Whether the comment is marked as done
+  parentId?: string; // ID of parent comment for threading
+  children?: string[]; // Array of child comment IDs
 }
 
 // Footnote/Endnote data extracted from .docx files

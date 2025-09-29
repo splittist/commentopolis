@@ -177,7 +177,24 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                       {comment.initial || comment.author.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div className="font-medium text-gray-800">{comment.author}</div>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-medium text-gray-800">{comment.author}</span>
+                        {comment.done && (
+                          <span className="px-1.5 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">
+                            ✓ Done
+                          </span>
+                        )}
+                        {comment.parentId && (
+                          <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 text-xs font-medium rounded">
+                            ↳ Reply
+                          </span>
+                        )}
+                        {comment.children && comment.children.length > 0 && (
+                          <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                            {comment.children.length} replies
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-gray-500">{formatDate(comment.date)}</div>
                     </div>
                   </div>

@@ -15,6 +15,8 @@ export interface DocxParseResult {
   commentsExtendedXml?: Document;
   footnotesXml?: Document;
   endnotesXml?: Document;
+  // Extended comment data for processing
+  extendedData?: Record<string, { done?: boolean; parentId?: string }>;
   // Transformed HTML content
   transformedContent?: TransformedContent;
 }
@@ -94,8 +96,103 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
 }
 
 /**
- * Parse XML text to extract footnote/endnote data
+ * Parse commentsExtended.xml to extract done status and threading information
  */
+function parseCommentsExtendedXml(xmlText: string): Record<string, { done?: boolean; parentId?: string }> {
+  const extendedData: Record<string, { done?: boolean; parentId?: string }> = {};
+  
+  const xmlDoc = parseXmlToDom(xmlText, 'commentsExtended.xml');
+  if (!xmlDoc) {
+    return extendedData;
+  }
+  
+  try {
+    // Find all commentExtended elements
+    const commentExtendedElements = xmlDoc.querySelectorAll('w\\:commentExtended, commentExtended');
+    
+    commentExtendedElements.forEach(commentExtEl => {
+      try {
+        const id = commentExtEl.getAttribute('w:id') || commentExtEl.getAttribute('id');
+        if (!id) return;
+        
+        const data: { done?: boolean; parentId?: string } = {};
+        
+        // Check for done status - this is typically in w:done element or w:resolved attribute
+        const doneElement = commentExtEl.querySelector('w\\:done, done');
+        const resolvedAttr = commentExtEl.getAttribute('w:resolved') || commentExtEl.getAttribute('resolved');
+        
+        if (doneElement || resolvedAttr) {
+          const doneValue = doneElement?.getAttribute('w:val') || doneElement?.getAttribute('val') || resolvedAttr;
+          data.done = doneValue === '1' || doneValue === 'true' || doneValue === 'yes';
+        }
+        
+        // Check for parent comment reference (threading)
+        const parentElement = commentExtEl.querySelector('w\\:parentCommentId, parentCommentId');
+        const parentAttr = commentExtEl.getAttribute('w:parentCommentId') || commentExtEl.getAttribute('parentCommentId');
+        
+        if (parentElement || parentAttr) {
+          const parentId = parentElement?.getAttribute('w:val') || parentElement?.getAttribute('val') || parentAttr;
+          if (parentId) {
+            data.parentId = parentId;
+          }
+        }
+        
+        if (Object.keys(data).length > 0) {
+          extendedData[id] = data;
+        }
+      } catch (error) {
+        console.warn('Error parsing individual commentExtended:', error);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error parsing commentsExtended XML:', error);
+  }
+  
+  return extendedData;
+}
+
+/**
+ * Apply extended comment data to enhance basic comments with threading and status
+ */
+function enhanceCommentsWithExtendedData(
+  comments: DocumentComment[], 
+  extendedData: Record<string, { done?: boolean; parentId?: string }>,
+  documentId: string
+): DocumentComment[] {
+  // Create a map for quick lookups
+  const commentMap = new Map<string, DocumentComment>();
+  
+  // First pass: apply extended data and build comment map
+  const enhancedComments = comments.map(comment => {
+    // Extract the original comment ID (remove document ID prefix)
+    const originalId = comment.id.replace(`${documentId}-`, '');
+    const extended = extendedData[originalId];
+    
+    const enhanced = {
+      ...comment,
+      done: extended?.done || false,
+      parentId: extended?.parentId ? `${documentId}-${extended.parentId}` : undefined,
+      children: [] as string[]
+    };
+    
+    commentMap.set(enhanced.id, enhanced);
+    return enhanced;
+  });
+  
+  // Second pass: build children arrays for threading
+  enhancedComments.forEach(comment => {
+    if (comment.parentId) {
+      const parent = commentMap.get(comment.parentId);
+      if (parent) {
+        parent.children = parent.children || [];
+        parent.children.push(comment.id);
+      }
+    }
+  });
+  
+  return enhancedComments;
+}
 function parseFootnotesEndnotesXml(
   xmlText: string, 
   documentId: string, 
@@ -242,6 +339,8 @@ export async function parseDocxComments(
               break;
             case 'commentsExtended':
               result.commentsExtendedXml = xmlDoc;
+              // Store extended data for later enhancement
+              result.extendedData = parseCommentsExtendedXml(content);
               break;
             case 'footnotes':
               result.footnotesXml = xmlDoc;
@@ -262,6 +361,15 @@ export async function parseDocxComments(
         }
       }
     });
+    
+    // Enhance comments with extended data if available
+    if (result.extendedData && result.comments.length > 0) {
+      result.comments = enhanceCommentsWithExtendedData(
+        result.comments, 
+        result.extendedData, 
+        documentId
+      );
+    }
     
     // Check if required document.xml is missing
     if (!result.documentXml) {
