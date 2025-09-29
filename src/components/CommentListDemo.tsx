@@ -31,6 +31,8 @@ const sampleComments: DocumentComment[] = [
     text: 'We should consider the budget implications of this proposal. The current estimates might be too optimistic given the market conditions.',
     documentId: 'demo-doc1',
     reference: 'Page 2, Paragraph 3',
+    done: false,
+    children: ['demo-comment6'], // Has a reply
   },
   {
     id: 'demo-comment2',
@@ -40,6 +42,8 @@ const sampleComments: DocumentComment[] = [
     text: 'Great point about the timeline. However, I think we can accelerate the delivery if we prioritize the core features first.',
     documentId: 'demo-doc1',
     reference: 'Page 3, Table 1',
+    done: true, // This comment is marked as done
+    children: [],
   },
   {
     id: 'demo-comment3',
@@ -49,6 +53,8 @@ const sampleComments: DocumentComment[] = [
     text: 'The technical architecture looks solid, but we need to ensure compatibility with our existing systems.',
     documentId: 'demo-doc2',
     reference: 'Section 4.2',
+    done: false,
+    children: ['demo-comment7'], // Has a reply
   },
   {
     id: 'demo-comment4',
@@ -58,6 +64,8 @@ const sampleComments: DocumentComment[] = [
     text: 'I agree with the risk assessment. We should add more contingency measures for the high-risk items.',
     documentId: 'demo-doc2',
     reference: 'Risk Matrix',
+    done: true, // This comment is marked as done
+    children: [],
   },
   {
     id: 'demo-comment5',
@@ -67,6 +75,32 @@ const sampleComments: DocumentComment[] = [
     text: 'This section needs more detail. Can we expand on the implementation strategy?',
     documentId: 'demo-doc1',
     reference: 'Page 5, Implementation',
+    done: false,
+    children: [],
+  },
+  {
+    id: 'demo-comment6',
+    author: 'Michael Chen',
+    initial: 'MC',
+    date: new Date('2023-12-01T16:00:00Z'),
+    text: 'Good point Sarah. I\'ve reviewed the latest market data and agree we should be more conservative. Let me update the projections.',
+    documentId: 'demo-doc1',
+    reference: 'Page 2, Paragraph 3',
+    parentId: 'demo-comment1', // Reply to Sarah's comment
+    done: false,
+    children: [],
+  },
+  {
+    id: 'demo-comment7',
+    author: 'David Kim',
+    initial: 'DK',
+    date: new Date('2023-12-02T10:30:00Z'),
+    text: 'I can help with the compatibility testing. Let\'s schedule a technical review meeting.',
+    documentId: 'demo-doc2',
+    reference: 'Section 4.2',
+    parentId: 'demo-comment3', // Reply to Emily's comment
+    done: true, // This reply is done
+    children: [],
   },
 ];
 

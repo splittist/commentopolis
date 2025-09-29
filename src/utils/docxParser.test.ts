@@ -382,5 +382,82 @@ describe('docxParser', () => {
       expect(result.footnotes).toHaveLength(0); // Should skip separator footnotes
       expect(result.footnotesXml).toBeDefined();
     });
+
+    it('parses extended comments with done status and threading', async () => {
+      const { default: JSZip } = await import('jszip');
+      
+      const mockDocumentXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body><w:p><w:r><w:t>Test document</w:t></w:r></w:p></w:body>
+        </w:document>`;
+      
+      const mockCommentsXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:comment w:id="0" w:author="John Doe" w:initials="JD" w:date="2023-12-01T10:00:00Z">
+            <w:p><w:r><w:t>This is a main comment</w:t></w:r></w:p>
+          </w:comment>
+          <w:comment w:id="1" w:author="Jane Smith" w:initials="JS" w:date="2023-12-01T11:00:00Z">
+            <w:p><w:r><w:t>This is a reply comment</w:t></w:r></w:p>
+          </w:comment>
+          <w:comment w:id="2" w:author="Bob Johnson" w:initials="BJ" w:date="2023-12-01T12:00:00Z">
+            <w:p><w:r><w:t>This is a done comment</w:t></w:r></w:p>
+          </w:comment>
+        </w:comments>`;
+      
+      const mockCommentsExtendedXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:commentsExtended xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:commentExtended w:id="1" w:parentCommentId="0">
+          </w:commentExtended>
+          <w:commentExtended w:id="2" w:resolved="1">
+          </w:commentExtended>
+        </w:commentsExtended>`;
+      
+      const mockZip = {
+        file: vi.fn().mockImplementation((path: string) => {
+          const xmlContent = {
+            'word/document.xml': mockDocumentXml,
+            'word/comments.xml': mockCommentsXml,
+            'word/commentsExtended.xml': mockCommentsExtendedXml
+          };
+          
+          if (path in xmlContent) {
+            return {
+              async: vi.fn().mockResolvedValue(xmlContent[path as keyof typeof xmlContent])
+            };
+          }
+          return null;
+        })
+      };
+      
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      
+      const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
+      
+      expect(result.comments).toHaveLength(3);
+      
+      // Check main comment (no extended data)
+      const mainComment = result.comments.find(c => c.id === 'doc-1-0');
+      expect(mainComment).toBeDefined();
+      expect(mainComment?.done).toBe(false);
+      expect(mainComment?.parentId).toBeUndefined();
+      expect(mainComment?.children).toEqual(['doc-1-1']);
+      
+      // Check reply comment (has parent)
+      const replyComment = result.comments.find(c => c.id === 'doc-1-1');
+      expect(replyComment).toBeDefined();
+      expect(replyComment?.done).toBe(false);
+      expect(replyComment?.parentId).toBe('doc-1-0');
+      expect(replyComment?.children).toEqual([]);
+      
+      // Check done comment (marked as resolved)
+      const doneComment = result.comments.find(c => c.id === 'doc-1-2');
+      expect(doneComment).toBeDefined();
+      expect(doneComment?.done).toBe(true);
+      expect(doneComment?.parentId).toBeUndefined();
+      expect(doneComment?.children).toEqual([]);
+      
+      expect(result.commentsXml).toBeDefined();
+      expect(result.commentsExtendedXml).toBeDefined();
+    });
   });
 });
