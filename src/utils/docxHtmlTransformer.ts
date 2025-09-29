@@ -11,10 +11,16 @@ export interface TransformedContent {
 export interface RunProperties {
   bold?: boolean;
   italic?: boolean;
-  underline?: boolean;
+  underline?: boolean | string; // boolean for simple underline, string for underline types like 'single', 'double', 'none'
   fontSize?: string;
   color?: string;
   fontFamily?: string;
+  highlight?: string;
+  strikethrough?: boolean;
+  doubleStrikethrough?: boolean;
+  allCaps?: boolean;
+  smallCaps?: boolean;
+  verticalAlign?: 'superscript' | 'subscript';
 }
 
 export interface ParagraphProperties {
@@ -49,9 +55,17 @@ function extractRunProperties(rPrElement: Element | null): RunProperties {
     props.italic = true;
   }
 
-  // Underline
-  if (rPrElement.querySelector('w\\:u, u')) {
-    props.underline = true;
+  // Underline - handle different types
+  const underlineElement = rPrElement.querySelector('w\\:u, u');
+  if (underlineElement) {
+    const val = underlineElement.getAttribute('w:val') || underlineElement.getAttribute('val');
+    if (val) {
+      // Store the underline type for more sophisticated handling
+      props.underline = val;
+    } else {
+      // Default to true for simple underline elements
+      props.underline = true;
+    }
   }
 
   // Font size
@@ -80,6 +94,44 @@ function extractRunProperties(rPrElement: Element | null): RunProperties {
                   rFontsElement.getAttribute('ascii');
     if (ascii) {
       props.fontFamily = ascii;
+    }
+  }
+
+  // Highlight
+  const highlightElement = rPrElement.querySelector('w\\:highlight, highlight');
+  if (highlightElement) {
+    const val = highlightElement.getAttribute('w:val') || highlightElement.getAttribute('val');
+    if (val && val !== 'none') {
+      props.highlight = val;
+    }
+  }
+
+  // Strikethrough
+  if (rPrElement.querySelector('w\\:strike, strike')) {
+    props.strikethrough = true;
+  }
+
+  // Double strikethrough
+  if (rPrElement.querySelector('w\\:dstrike, dstrike')) {
+    props.doubleStrikethrough = true;
+  }
+
+  // All capitals
+  if (rPrElement.querySelector('w\\:caps, caps')) {
+    props.allCaps = true;
+  }
+
+  // Small caps
+  if (rPrElement.querySelector('w\\:smallCaps, smallCaps')) {
+    props.smallCaps = true;
+  }
+
+  // Vertical alignment (superscript/subscript)
+  const vertAlignElement = rPrElement.querySelector('w\\:vertAlign, vertAlign');
+  if (vertAlignElement) {
+    const val = vertAlignElement.getAttribute('w:val') || vertAlignElement.getAttribute('val');
+    if (val === 'superscript' || val === 'subscript') {
+      props.verticalAlign = val;
     }
   }
 
@@ -145,13 +197,94 @@ function extractParagraphProperties(pPrElement: Element | null): ParagraphProper
  */
 function createRunStyles(props: RunProperties): string {
   const styles: string[] = [];
+  const decorations: string[] = [];
 
   if (props.bold) styles.push('font-weight: bold');
   if (props.italic) styles.push('font-style: italic');
-  if (props.underline) styles.push('text-decoration: underline');
+  
+  // Enhanced underline handling
+  if (props.underline) {
+    if (typeof props.underline === 'string') {
+      switch (props.underline) {
+        case 'single':
+          decorations.push('underline');
+          break;
+        case 'double':
+          decorations.push('underline');
+          break;
+        case 'none':
+          // Explicitly no underline - this overrides any other decorations
+          styles.push('text-decoration: none');
+          break;
+        default:
+          // Fallback for other underline types
+          decorations.push('underline');
+      }
+    } else {
+      // Boolean true - simple underline
+      decorations.push('underline');
+    }
+  }
+
+  // Strikethrough handling
+  if (props.strikethrough || props.doubleStrikethrough) {
+    decorations.push('line-through');
+  }
+
+  // Combine text decorations if we have any
+  if (decorations.length > 0) {
+    styles.push(`text-decoration: ${decorations.join(' ')}`);
+  }
+
+  // Add text-decoration-style after text-decoration for double underlines
+  if (props.underline === 'double') {
+    styles.push('text-decoration-style: double');
+  }
+
   if (props.fontSize) styles.push(`font-size: ${props.fontSize}`);
   if (props.color) styles.push(`color: ${props.color}`);
   if (props.fontFamily) styles.push(`font-family: "${props.fontFamily}"`);
+  
+  // Highlight (background color)
+  if (props.highlight) {
+    // Map common Word highlight colors to CSS colors
+    const highlightColorMap: { [key: string]: string } = {
+      'yellow': '#ffff00',
+      'brightGreen': '#00ff00',
+      'turquoise': '#40e0d0',
+      'pink': '#ffc0cb',
+      'blue': '#0000ff',
+      'red': '#ff0000',
+      'darkBlue': '#000080',
+      'teal': '#008080',
+      'green': '#008000',
+      'violet': '#ee82ee',
+      'darkRed': '#8b0000',
+      'darkYellow': '#8b8000',
+      'gray25': '#c0c0c0',
+      'gray50': '#808080',
+      'black': '#000000'
+    };
+    
+    const highlightColor = highlightColorMap[props.highlight] || props.highlight;
+    styles.push(`background-color: ${highlightColor}`);
+  }
+
+  // Text transform for caps
+  if (props.allCaps) {
+    styles.push('text-transform: uppercase');
+  } else if (props.smallCaps) {
+    styles.push('font-variant: small-caps');
+  }
+
+  // Vertical alignment for super/subscript
+  if (props.verticalAlign) {
+    if (props.verticalAlign === 'superscript') {
+      styles.push('vertical-align: super; font-size: smaller');
+    } else if (props.verticalAlign === 'subscript') {
+      styles.push('vertical-align: sub; font-size: smaller');
+    }
+  }
 
   return styles.join('; ');
 }
