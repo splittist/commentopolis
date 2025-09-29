@@ -45,6 +45,29 @@ export interface ParagraphProperties {
   };
 }
 
+export interface TableProperties {
+  alignment?: 'left' | 'center' | 'right';
+  width?: string;
+  border?: {
+    style?: string;
+    width?: string;
+    color?: string;
+  };
+}
+
+export interface TableCellProperties {
+  width?: string;
+  alignment?: 'left' | 'center' | 'right' | 'justify';
+  verticalAlignment?: 'top' | 'middle' | 'bottom';
+  background?: string;
+  border?: {
+    top?: { style?: string; width?: string; color?: string; };
+    bottom?: { style?: string; width?: string; color?: string; };
+    left?: { style?: string; width?: string; color?: string; };
+    right?: { style?: string; width?: string; color?: string; };
+  };
+}
+
 /**
  * Extract run properties from Word XML run properties element
  */
@@ -201,6 +224,103 @@ function extractParagraphProperties(pPrElement: Element | null): ParagraphProper
 }
 
 /**
+ * Extract table properties from Word XML table properties element
+ */
+function extractTableProperties(tblPrElement: Element | null): TableProperties {
+  const props: TableProperties = {};
+  
+  if (!tblPrElement) return props;
+
+  // Table alignment
+  const jcElement = tblPrElement.querySelector('w\\:jc, jc');
+  if (jcElement) {
+    const val = jcElement.getAttribute('w:val') || jcElement.getAttribute('val');
+    if (val) {
+      switch (val) {
+        case 'center':
+          props.alignment = 'center';
+          break;
+        case 'right':
+          props.alignment = 'right';
+          break;
+        default:
+          props.alignment = 'left';
+      }
+    }
+  }
+
+  // Table width
+  const tblWElement = tblPrElement.querySelector('w\\:tblW, tblW');
+  if (tblWElement) {
+    const wVal = tblWElement.getAttribute('w:w') || tblWElement.getAttribute('w');
+    const type = tblWElement.getAttribute('w:type') || tblWElement.getAttribute('type');
+    if (wVal && type) {
+      if (type === 'pct') {
+        // Percentage width
+        props.width = `${parseInt(wVal) / 50}%`; // Word uses 50ths of a percent
+      } else if (type === 'dxa') {
+        // Twips width
+        props.width = `${twipsToPixels(parseInt(wVal))}px`;
+      }
+    }
+  }
+
+  return props;
+}
+
+/**
+ * Extract table cell properties from Word XML table cell properties element
+ */
+function extractTableCellProperties(tcPrElement: Element | null): TableCellProperties {
+  const props: TableCellProperties = {};
+  
+  if (!tcPrElement) return props;
+
+  // Cell width
+  const tcWElement = tcPrElement.querySelector('w\\:tcW, tcW');
+  if (tcWElement) {
+    const wVal = tcWElement.getAttribute('w:w') || tcWElement.getAttribute('w');
+    const type = tcWElement.getAttribute('w:type') || tcWElement.getAttribute('type');
+    if (wVal && type) {
+      if (type === 'pct') {
+        props.width = `${parseInt(wVal) / 50}%`;
+      } else if (type === 'dxa') {
+        props.width = `${twipsToPixels(parseInt(wVal))}px`;
+      }
+    }
+  }
+
+  // Vertical alignment
+  const vAlignElement = tcPrElement.querySelector('w\\:vAlign, vAlign');
+  if (vAlignElement) {
+    const val = vAlignElement.getAttribute('w:val') || vAlignElement.getAttribute('val');
+    if (val) {
+      switch (val) {
+        case 'center':
+          props.verticalAlignment = 'middle';
+          break;
+        case 'bottom':
+          props.verticalAlignment = 'bottom';
+          break;
+        default:
+          props.verticalAlignment = 'top';
+      }
+    }
+  }
+
+  // Background color
+  const shdElement = tcPrElement.querySelector('w\\:shd, shd');
+  if (shdElement) {
+    const fill = shdElement.getAttribute('w:fill') || shdElement.getAttribute('fill');
+    if (fill && fill !== 'auto' && fill !== 'ffffff') {
+      props.background = `#${fill}`;
+    }
+  }
+
+  return props;
+}
+
+/**
  * Apply run properties to create inline CSS styles
  */
 function createRunStyles(props: RunProperties): string {
@@ -349,6 +469,61 @@ function createParagraphStyles(props: ParagraphProperties): string {
       const firstLinePx = twipsToPixels(props.indentation.firstLine);
       styles.push(`text-indent: ${firstLinePx}px`);
     }
+  }
+
+  return styles.join('; ');
+}
+
+/**
+ * Apply table properties to create inline CSS styles
+ */
+function createTableStyles(props: TableProperties): string {
+  const styles: string[] = [];
+
+  // Default table styles
+  styles.push('border-collapse: collapse');
+  styles.push('width: 100%');
+
+  if (props.alignment) {
+    if (props.alignment === 'center') {
+      styles.push('margin-left: auto');
+      styles.push('margin-right: auto');
+    } else if (props.alignment === 'right') {
+      styles.push('margin-left: auto');
+    }
+  }
+
+  if (props.width) {
+    styles.push(`width: ${props.width}`);
+  }
+
+  return styles.join('; ');
+}
+
+/**
+ * Apply table cell properties to create inline CSS styles
+ */
+function createTableCellStyles(props: TableCellProperties): string {
+  const styles: string[] = [];
+
+  // Default cell styles
+  styles.push('border: 1px solid #ddd');
+  styles.push('padding: 8px');
+
+  if (props.width) {
+    styles.push(`width: ${props.width}`);
+  }
+
+  if (props.alignment) {
+    styles.push(`text-align: ${props.alignment}`);
+  }
+
+  if (props.verticalAlignment) {
+    styles.push(`vertical-align: ${props.verticalAlignment}`);
+  }
+
+  if (props.background) {
+    styles.push(`background-color: ${props.background}`);
   }
 
   return styles.join('; ');
@@ -525,6 +700,80 @@ function transformParagraph(paragraphElement: Element, noteContext: NoteContext)
 }
 
 /**
+ * Transform a Word table cell element to HTML
+ */
+function transformTableCell(cellElement: Element, noteContext: NoteContext): string {
+  // Get cell properties
+  const tcPrElement = cellElement.querySelector('w\\:tcPr, tcPr');
+  const cellProps = extractTableCellProperties(tcPrElement);
+
+  // Transform all paragraphs in the cell
+  const paragraphElements = cellElement.querySelectorAll('w\\:p, p');
+  
+  let cellContent = '';
+  if (paragraphElements.length > 0) {
+    cellContent = Array.from(paragraphElements)
+      .map(p => transformParagraph(p, noteContext))
+      .filter(html => html.trim())
+      .join('\n');
+  }
+
+  if (!cellContent.trim()) {
+    cellContent = '<p></p>'; // Empty cell
+  }
+
+  // Apply cell styling
+  const styles = createTableCellStyles(cellProps);
+  
+  return `<td style="${styles}">${cellContent}</td>`;
+}
+
+/**
+ * Transform a Word table row element to HTML
+ */
+function transformTableRow(rowElement: Element, noteContext: NoteContext): string {
+  // Transform all cells in the row
+  const cellElements = rowElement.querySelectorAll('w\\:tc, tc');
+  
+  const cellContent = Array.from(cellElements)
+    .map(cell => transformTableCell(cell, noteContext))
+    .filter(html => html.trim())
+    .join('');
+
+  if (!cellContent.trim()) {
+    return '<tr><td></td></tr>'; // Empty row with at least one cell
+  }
+
+  return `<tr>${cellContent}</tr>`;
+}
+
+/**
+ * Transform a Word table element to HTML
+ */
+function transformTable(tableElement: Element, noteContext: NoteContext): string {
+  // Get table properties
+  const tblPrElement = tableElement.querySelector('w\\:tblPr, tblPr');
+  const tableProps = extractTableProperties(tblPrElement);
+
+  // Transform all rows in the table
+  const rowElements = tableElement.querySelectorAll('w\\:tr, tr');
+  
+  const rowContent = Array.from(rowElements)
+    .map(row => transformTableRow(row, noteContext))
+    .filter(html => html.trim())
+    .join('\n');
+
+  if (!rowContent.trim()) {
+    return '<table><tr><td></td></tr></table>'; // Empty table with minimal structure
+  }
+
+  // Apply table styling
+  const styles = createTableStyles(tableProps);
+  
+  return `<table style="${styles}">\n${rowContent}\n</table>`;
+}
+
+/**
  * Escape HTML special characters
  */
 function escapeHtml(text: string): string {
@@ -544,7 +793,7 @@ export function transformDocumentToHtml(
   // Create note context for footnotes and endnotes
   const noteContext = createNoteContext(footnotes, endnotes);
   
-  // Find all paragraph elements in the document body
+  // Find all paragraph and table elements in the document body
   const body = documentXml.querySelector('w\\:body, body');
   if (!body) {
     return {
@@ -553,18 +802,30 @@ export function transformDocumentToHtml(
     };
   }
 
-  const paragraphElements = body.querySelectorAll('w\\:p, p');
+  // Get all direct children that are paragraphs or tables
+  const contentElements = Array.from(body.children).filter(element => {
+    const tagName = element.tagName.toLowerCase();
+    return tagName.match(/^(w:)?p$/) || tagName.match(/^(w:)?tbl$/);
+  });
   
-  if (paragraphElements.length === 0) {
+  if (contentElements.length === 0) {
     return {
-      html: '<p>No paragraphs found in document.</p>',
-      plainText: 'No paragraphs found in document.'
+      html: '<p>No content found in document.</p>',
+      plainText: 'No content found in document.'
     };
   }
 
-  // Transform each paragraph
-  const htmlParts = Array.from(paragraphElements)
-    .map(p => transformParagraph(p, noteContext))
+  // Transform each content element (paragraph or table)
+  const htmlParts = contentElements
+    .map(element => {
+      const tagName = element.tagName.toLowerCase();
+      if (tagName.match(/^(w:)?p$/)) {
+        return transformParagraph(element, noteContext);
+      } else if (tagName.match(/^(w:)?tbl$/)) {
+        return transformTable(element, noteContext);
+      }
+      return '';
+    })
     .filter(html => html.trim());
 
   let html = htmlParts.join('\n');
@@ -604,6 +865,7 @@ export function transformDocumentToHtml(
   }
   
   // Extract plain text for search/indexing (including footnotes/endnotes)
+  const paragraphElements = body.querySelectorAll('w\\:p, p');
   const mainText = Array.from(paragraphElements)
     .map(p => {
       const textElements = p.querySelectorAll('w\\:t, t');

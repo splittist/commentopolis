@@ -21,7 +21,7 @@ describe('docxHtmlTransformer', () => {
       expect(result.plainText).toBe('No document content found.');
     });
 
-    it('should handle document with no paragraphs', () => {
+    it('should handle document with no content', () => {
       const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
         <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
           <w:body>
@@ -31,8 +31,8 @@ describe('docxHtmlTransformer', () => {
       const xmlDoc = createXmlDocument(xmlString);
       const result = transformDocumentToHtml(xmlDoc);
       
-      expect(result.html).toBe('<p>No paragraphs found in document.</p>');
-      expect(result.plainText).toBe('No paragraphs found in document.');
+      expect(result.html).toBe('<p>No content found in document.</p>');
+      expect(result.plainText).toBe('No content found in document.');
     });
 
     it('should transform simple paragraph with plain text', () => {
@@ -1085,6 +1085,280 @@ describe('docxHtmlTransformer', () => {
       expect(result.html).toContain('<div class="footnotes">');
       expect(result.html).toContain('Normal footnote');
       expect(result.html).not.toContain('Separator');
+    });
+  });
+
+  describe('Table transformation', () => {
+    it('should transform simple table with one cell', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:tbl>
+              <w:tr>
+                <w:tc>
+                  <w:p>
+                    <w:r>
+                      <w:t>Cell content</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+              </w:tr>
+            </w:tbl>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toContain('<table style="border-collapse: collapse; width: 100%">');
+      expect(result.html).toContain('<td style="border: 1px solid #ddd; padding: 8px">');
+      expect(result.html).toContain('<p>Cell content</p>');
+      expect(result.html).toContain('</td>');
+      expect(result.html).toContain('</table>');
+      expect(result.plainText).toBe('Cell content');
+    });
+
+    it('should transform table with multiple rows and cells', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:tbl>
+              <w:tr>
+                <w:tc>
+                  <w:p>
+                    <w:r>
+                      <w:t>Header 1</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+                <w:tc>
+                  <w:p>
+                    <w:r>
+                      <w:t>Header 2</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+              </w:tr>
+              <w:tr>
+                <w:tc>
+                  <w:p>
+                    <w:r>
+                      <w:t>Data 1</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+                <w:tc>
+                  <w:p>
+                    <w:r>
+                      <w:t>Data 2</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+              </w:tr>
+            </w:tbl>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toContain('<table style="border-collapse: collapse; width: 100%">');
+      expect(result.html).toContain('<p>Header 1</p>');
+      expect(result.html).toContain('<p>Header 2</p>');
+      expect(result.html).toContain('<p>Data 1</p>');
+      expect(result.html).toContain('<p>Data 2</p>');
+      expect(result.plainText).toContain('Header 1');
+      expect(result.plainText).toContain('Data 2');
+    });
+
+    it('should transform table with cell properties', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:tbl>
+              <w:tr>
+                <w:tc>
+                  <w:tcPr>
+                    <w:tcW w:w="2000" w:type="dxa" />
+                    <w:vAlign w:val="center" />
+                    <w:shd w:fill="FFFF00" />
+                  </w:tcPr>
+                  <w:p>
+                    <w:r>
+                      <w:t>Styled cell</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+              </w:tr>
+            </w:tbl>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toContain('width: 133px');
+      expect(result.html).toContain('vertical-align: middle');
+      expect(result.html).toContain('background-color: #FFFF00');
+      expect(result.html).toContain('<p>Styled cell</p>');
+    });
+
+    it('should transform table with table properties', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:tbl>
+              <w:tblPr>
+                <w:jc w:val="center" />
+                <w:tblW w:w="4000" w:type="pct" />
+              </w:tblPr>
+              <w:tr>
+                <w:tc>
+                  <w:p>
+                    <w:r>
+                      <w:t>Centered table</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+              </w:tr>
+            </w:tbl>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toContain('margin-left: auto');
+      expect(result.html).toContain('margin-right: auto');
+      expect(result.html).toContain('width: 80%');
+      expect(result.html).toContain('<p>Centered table</p>');
+    });
+
+    it('should transform table mixed with paragraphs', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>Before table</w:t>
+              </w:r>
+            </w:p>
+            <w:tbl>
+              <w:tr>
+                <w:tc>
+                  <w:p>
+                    <w:r>
+                      <w:t>Table data</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+              </w:tr>
+            </w:tbl>
+            <w:p>
+              <w:r>
+                <w:t>After table</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toContain('<p>Before table</p>');
+      expect(result.html).toContain('<table style="border-collapse: collapse; width: 100%">');
+      expect(result.html).toContain('<p>Table data</p>');
+      expect(result.html).toContain('<p>After table</p>');
+      expect(result.plainText).toContain('Before table');
+      expect(result.plainText).toContain('Table data');
+      expect(result.plainText).toContain('After table');
+    });
+
+    it('should handle empty table cells', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:tbl>
+              <w:tr>
+                <w:tc>
+                  <w:p>
+                    <w:r>
+                      <w:t></w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+                <w:tc>
+                  <w:p>
+                    <w:r>
+                      <w:t>Non-empty</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+              </w:tr>
+            </w:tbl>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toContain('<table');
+      expect(result.html).toContain('<p></p>');
+      expect(result.html).toContain('<p>Non-empty</p>');
+    });
+
+    it('should handle table cells with formatted text', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:tbl>
+              <w:tr>
+                <w:tc>
+                  <w:p>
+                    <w:r>
+                      <w:rPr>
+                        <w:b />
+                      </w:rPr>
+                      <w:t>Bold in table</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+              </w:tr>
+            </w:tbl>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toContain('<span style="font-weight: bold">Bold in table</span>');
+      expect(result.plainText).toBe('Bold in table');
+    });
+
+    it('should work with namespaced and non-namespaced table elements', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <document>
+          <body>
+            <tbl>
+              <tr>
+                <tc>
+                  <p>
+                    <r>
+                      <t>No namespace table</t>
+                    </r>
+                  </p>
+                </tc>
+              </tr>
+            </tbl>
+          </body>
+        </document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toContain('<table style="border-collapse: collapse; width: 100%">');
+      expect(result.html).toContain('<p>No namespace table</p>');
+      expect(result.plainText).toBe('No namespace table');
     });
   });
 });
