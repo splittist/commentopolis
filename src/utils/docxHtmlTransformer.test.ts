@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { transformDocumentToHtml } from './docxHtmlTransformer';
+import { transformDocumentToHtml, twipsToPixels } from './docxHtmlTransformer';
 
 // Helper function to create XML DOM from string
 function createXmlDocument(xmlString: string): Document {
@@ -279,6 +279,95 @@ describe('docxHtmlTransformer', () => {
       
       expect(result.html).toBe('<p style="text-align: justify">Justified text</p>');
       expect(result.plainText).toBe('Justified text');
+    });
+
+    it('should transform paragraph with left indentation', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:pPr>
+                <w:ind w:left="720" />
+              </w:pPr>
+              <w:r>
+                <w:t>Indented text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p style="margin-left: 48px">Indented text</p>');
+      expect(result.plainText).toBe('Indented text');
+    });
+
+    it('should transform paragraph with right indentation', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:pPr>
+                <w:ind w:right="360" />
+              </w:pPr>
+              <w:r>
+                <w:t>Right indented text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p style="margin-right: 24px">Right indented text</p>');
+      expect(result.plainText).toBe('Right indented text');
+    });
+
+    it('should transform paragraph with first line indentation', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:pPr>
+                <w:ind w:firstLine="1440" />
+              </w:pPr>
+              <w:r>
+                <w:t>First line indented text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p style="text-indent: 96px">First line indented text</p>');
+      expect(result.plainText).toBe('First line indented text');
+    });
+
+    it('should transform paragraph with multiple indentation properties', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:pPr>
+                <w:jc w:val="center" />
+                <w:ind w:left="720" w:right="360" w:firstLine="1440" />
+              </w:pPr>
+              <w:r>
+                <w:t>Complex indented text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p style="text-align: center; margin-left: 48px; margin-right: 24px; text-indent: 96px">Complex indented text</p>');
+      expect(result.plainText).toBe('Complex indented text');
     });
 
     it('should handle empty runs and paragraphs', () => {
@@ -613,6 +702,39 @@ describe('docxHtmlTransformer', () => {
       const expectedStyle = 'font-weight: bold; text-decoration: underline line-through; text-decoration-style: double; background-color: #ffff00; text-transform: uppercase';
       expect(result.html).toBe(`<p><span style="${expectedStyle}">complex formatting</span></p>`);
       expect(result.plainText).toBe('complex formatting');
+    });
+  });
+
+  describe('twipsToPixels', () => {
+    it('should convert twips to pixels using the correct formula', () => {
+      // Test known conversion values
+      expect(twipsToPixels(1440)).toBe(96); // 1440 twips = 1 inch at 96 DPI
+      expect(twipsToPixels(720)).toBe(48);  // 720 twips = 0.5 inch at 96 DPI
+      expect(twipsToPixels(360)).toBe(24);  // 360 twips = 0.25 inch at 96 DPI
+    });
+
+    it('should handle zero input', () => {
+      expect(twipsToPixels(0)).toBe(0);
+    });
+
+    it('should handle negative values', () => {
+      expect(twipsToPixels(-1440)).toBe(-96);
+    });
+
+    it('should round to nearest pixel', () => {
+      // Test rounding behavior
+      expect(twipsToPixels(360)).toBe(24); // Should round down
+      expect(twipsToPixels(380)).toBe(25); // Should round up
+    });
+
+    it('should maintain consistent conversion with original formula', () => {
+      // Test that the extracted function produces the same results as the original formula
+      const testValues = [100, 500, 1000, 1440, 2000];
+      
+      testValues.forEach(twips => {
+        const expected = Math.round(twips / 20 * 96 / 72);
+        expect(twipsToPixels(twips)).toBe(expected);
+      });
     });
   });
 });

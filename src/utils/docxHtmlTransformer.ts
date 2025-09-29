@@ -290,6 +290,15 @@ function createRunStyles(props: RunProperties): string {
 }
 
 /**
+ * Convert twips to pixels (assuming 96 DPI)
+ * Twips are a unit used in Word documents (1/20th of a point)
+ * The formula: twips / 20 * 96 / 72 converts to pixels at 96 DPI
+ */
+export function twipsToPixels(twips: number): number {
+  return Math.round(twips / 20 * 96 / 72);
+}
+
+/**
  * Apply paragraph properties to create inline CSS styles
  */
 function createParagraphStyles(props: ParagraphProperties): string {
@@ -301,18 +310,17 @@ function createParagraphStyles(props: ParagraphProperties): string {
 
   if (props.indentation) {
     if (props.indentation.left) {
-      // Convert from twips to pixels (assuming 96 DPI)
-      const leftPx = Math.round(props.indentation.left / 20 * 96 / 72);
+      const leftPx = twipsToPixels(props.indentation.left);
       styles.push(`margin-left: ${leftPx}px`);
     }
     
     if (props.indentation.right) {
-      const rightPx = Math.round(props.indentation.right / 20 * 96 / 72);
+      const rightPx = twipsToPixels(props.indentation.right);
       styles.push(`margin-right: ${rightPx}px`);
     }
     
     if (props.indentation.firstLine) {
-      const firstLinePx = Math.round(props.indentation.firstLine / 20 * 96 / 72);
+      const firstLinePx = twipsToPixels(props.indentation.firstLine);
       styles.push(`text-indent: ${firstLinePx}px`);
     }
   }
