@@ -1360,5 +1360,117 @@ describe('docxHtmlTransformer', () => {
       expect(result.html).toContain('<p>No namespace table</p>');
       expect(result.plainText).toBe('No namespace table');
     });
+
+    it('should handle paragraph numbering with numPr elements', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:pPr>
+                <w:numPr>
+                  <w:ilvl w:val="0"/>
+                  <w:numId w:val="1"/>
+                </w:numPr>
+              </w:pPr>
+              <w:r>
+                <w:t>First numbered item</w:t>
+              </w:r>
+            </w:p>
+            <w:p>
+              <w:pPr>
+                <w:numPr>
+                  <w:ilvl w:val="0"/>
+                  <w:numId w:val="1"/>
+                </w:numPr>
+              </w:pPr>
+              <w:r>
+                <w:t>Second numbered item</w:t>
+              </w:r>
+            </w:p>
+            <w:p>
+              <w:pPr>
+                <w:numPr>
+                  <w:ilvl w:val="1"/>
+                  <w:numId w:val="1"/>
+                </w:numPr>
+              </w:pPr>
+              <w:r>
+                <w:t>Nested item</w:t>
+              </w:r>
+            </w:p>
+            <w:p>
+              <w:pPr>
+                <w:numPr>
+                  <w:ilvl w:val="0"/>
+                  <w:numId w:val="1"/>
+                </w:numPr>
+              </w:pPr>
+              <w:r>
+                <w:t>Third numbered item</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toContain('<span class="numbering-text">1. </span>First numbered item');
+      expect(result.html).toContain('<span class="numbering-text">2. </span>Second numbered item');
+      expect(result.html).toContain('<span class="numbering-text">1. </span>Nested item');
+      expect(result.html).toContain('<span class="numbering-text">3. </span>Third numbered item');
+      expect(result.plainText).toContain('First numbered item');
+      expect(result.plainText).toContain('Second numbered item');
+      expect(result.plainText).toContain('Nested item');
+      expect(result.plainText).toContain('Third numbered item');
+    });
+
+    it('should handle multiple numbering lists with different numId values', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:pPr>
+                <w:numPr>
+                  <w:ilvl w:val="0"/>
+                  <w:numId w:val="1"/>
+                </w:numPr>
+              </w:pPr>
+              <w:r>
+                <w:t>List 1 - Item 1</w:t>
+              </w:r>
+            </w:p>
+            <w:p>
+              <w:pPr>
+                <w:numPr>
+                  <w:ilvl w:val="0"/>
+                  <w:numId w:val="2"/>
+                </w:numPr>
+              </w:pPr>
+              <w:r>
+                <w:t>List 2 - Item 1</w:t>
+              </w:r>
+            </w:p>
+            <w:p>
+              <w:pPr>
+                <w:numPr>
+                  <w:ilvl w:val="0"/>
+                  <w:numId w:val="1"/>
+                </w:numPr>
+              </w:pPr>
+              <w:r>
+                <w:t>List 1 - Item 2</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toContain('<span class="numbering-text">1. </span>List 1 - Item 1');
+      expect(result.html).toContain('<span class="numbering-text">1. </span>List 2 - Item 1');
+      expect(result.html).toContain('<span class="numbering-text">2. </span>List 1 - Item 2');
+    });
   });
 });
