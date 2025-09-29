@@ -21,6 +21,13 @@ export interface RunProperties {
   allCaps?: boolean;
   smallCaps?: boolean;
   verticalAlign?: 'superscript' | 'subscript';
+  // Tracked changes properties
+  revision?: {
+    type: 'insertion' | 'deletion' | 'moveFrom' | 'moveTo';
+    author?: string;
+    date?: string;
+    id?: string;
+  };
 }
 
 export interface ParagraphProperties {
@@ -286,6 +293,24 @@ function createRunStyles(props: RunProperties): string {
     }
   }
 
+  // Tracked changes styling
+  if (props.revision) {
+    switch (props.revision.type) {
+      case 'insertion':
+        styles.push('color: #008000; text-decoration: underline');
+        break;
+      case 'deletion':
+        styles.push('color: #ff0000; text-decoration: line-through');
+        break;
+      case 'moveFrom':
+        styles.push('color: #0000ff; text-decoration: line-through');
+        break;
+      case 'moveTo':
+        styles.push('color: #0000ff; text-decoration: underline');
+        break;
+    }
+  }
+
   return styles.join('; ');
 }
 
@@ -329,12 +354,74 @@ function createParagraphStyles(props: ParagraphProperties): string {
 }
 
 /**
+ * Extract revision/tracked change information from an element or its ancestors
+ */
+function extractRevisionInfo(element: Element): RunProperties['revision'] | null {
+  // Check if the element itself is a tracked change element
+  if (element.tagName.match(/^(w:)?ins$/i)) {
+    return {
+      type: 'insertion',
+      author: element.getAttribute('w:author') || element.getAttribute('author') || undefined,
+      date: element.getAttribute('w:date') || element.getAttribute('date') || undefined,
+      id: element.getAttribute('w:id') || element.getAttribute('id') || undefined
+    };
+  }
+  
+  if (element.tagName.match(/^(w:)?del$/i)) {
+    return {
+      type: 'deletion',
+      author: element.getAttribute('w:author') || element.getAttribute('author') || undefined,
+      date: element.getAttribute('w:date') || element.getAttribute('date') || undefined,
+      id: element.getAttribute('w:id') || element.getAttribute('id') || undefined
+    };
+  }
+  
+  if (element.tagName.match(/^(w:)?moveFrom$/i)) {
+    return {
+      type: 'moveFrom',
+      author: element.getAttribute('w:author') || element.getAttribute('author') || undefined,
+      date: element.getAttribute('w:date') || element.getAttribute('date') || undefined,
+      id: element.getAttribute('w:id') || element.getAttribute('id') || undefined
+    };
+  }
+  
+  if (element.tagName.match(/^(w:)?moveTo$/i)) {
+    return {
+      type: 'moveTo',
+      author: element.getAttribute('w:author') || element.getAttribute('author') || undefined,
+      date: element.getAttribute('w:date') || element.getAttribute('date') || undefined,
+      id: element.getAttribute('w:id') || element.getAttribute('id') || undefined
+    };
+  }
+
+  // Check parent elements for tracked changes (runs can be nested inside revision elements)
+  let parent = element.parentElement;
+  while (parent) {
+    const parentRevision = extractRevisionInfo(parent);
+    if (parentRevision) {
+      return parentRevision;
+    }
+    parent = parent.parentElement;
+  }
+  
+  return null;
+}
+
+/**
  * Transform a Word run element to HTML
  */
 function transformRun(runElement: Element): string {
+  // Check if this run is inside a tracked change element
+  const revisionInfo = extractRevisionInfo(runElement);
+  
   // Get run properties
   const rPrElement = runElement.querySelector('w\\:rPr, rPr');
   const runProps = extractRunProperties(rPrElement);
+  
+  // Apply revision info to run properties
+  if (revisionInfo) {
+    runProps.revision = revisionInfo;
+  }
 
   // Get text content
   const textElements = runElement.querySelectorAll('w\\:t, t');
@@ -364,9 +451,13 @@ function transformParagraph(paragraphElement: Element): string {
   const pPrElement = paragraphElement.querySelector('w\\:pPr, pPr');
   const paragraphProps = extractParagraphProperties(pPrElement);
 
-  // Transform all runs in the paragraph
-  const runElements = paragraphElement.querySelectorAll('w\\:r, r');
-  const runContent = Array.from(runElements)
+  // Transform all runs in the paragraph, including those within tracked change elements
+  const allRunElements = paragraphElement.querySelectorAll('w\\:r, r');
+  
+  // Note: Tracked change elements are handled through the extractRevisionInfo function
+  // which checks parent elements for revision information
+
+  const runContent = Array.from(allRunElements)
     .map(run => transformRun(run))
     .filter(content => content.trim())
     .join('');
