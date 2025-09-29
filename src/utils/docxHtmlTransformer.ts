@@ -3,6 +3,13 @@
  * Converts Word document runs and paragraphs from XML to HTML format
  */
 import type { DocumentFootnote } from '../types';
+import { 
+  getNumberingText, 
+  createNumberingCounters, 
+  getOrCreateCounter, 
+  incrementCounter,
+  type NumberingCounters
+} from './numbering';
 
 export interface TransformedContent {
   html: string;
@@ -42,6 +49,10 @@ export interface ParagraphProperties {
     before?: number;
     after?: number;
     lineSpacing?: number;
+  };
+  numbering?: {
+    numId?: string;
+    ilvl?: number;
   };
 }
 
@@ -217,6 +228,28 @@ function extractParagraphProperties(pPrElement: Element | null): ParagraphProper
                       indElement.getAttribute('firstLine');
     if (firstLine) {
       props.indentation.firstLine = parseInt(firstLine);
+    }
+  }
+
+  // Numbering properties  
+  const numPrElement = pPrElement.querySelector('w\\:numPr, numPr');
+  if (numPrElement) {
+    props.numbering = {};
+    
+    const numIdElement = numPrElement.querySelector('w\\:numId, numId');
+    if (numIdElement) {
+      const numId = numIdElement.getAttribute('w:val') || numIdElement.getAttribute('val');
+      if (numId) {
+        props.numbering.numId = numId;
+      }
+    }
+    
+    const ilvlElement = numPrElement.querySelector('w\\:ilvl, ilvl');
+    if (ilvlElement) {
+      const ilvl = ilvlElement.getAttribute('w:val') || ilvlElement.getAttribute('val');
+      if (ilvl) {
+        props.numbering.ilvl = parseInt(ilvl);
+      }
     }
   }
 
@@ -592,6 +625,14 @@ interface NoteContext {
 }
 
 /**
+ * Transform context including notes and numbering
+ */
+interface TransformContext {
+  notes: NoteContext;
+  numbering: NumberingCounters;
+}
+
+/**
  * Create note context from footnotes and endnotes arrays
  */
 function createNoteContext(footnotes: DocumentFootnote[], endnotes: DocumentFootnote[]): NoteContext {
@@ -616,7 +657,7 @@ function createNoteContext(footnotes: DocumentFootnote[], endnotes: DocumentFoot
 /**
  * Transform a Word run element to HTML
  */
-function transformRun(runElement: Element, noteContext: NoteContext): string {
+function transformRun(runElement: Element, context: TransformContext): string {
   // Check if this run is inside a tracked change element
   const revisionInfo = extractRevisionInfo(runElement);
   
@@ -633,7 +674,7 @@ function transformRun(runElement: Element, noteContext: NoteContext): string {
   const footnoteRef = runElement.querySelector('w\\:footnoteReference, footnoteReference');
   if (footnoteRef) {
     const id = footnoteRef.getAttribute('w:id') || footnoteRef.getAttribute('id');
-    if (id && noteContext.footnotes.has(id)) {
+    if (id && context.notes.footnotes.has(id)) {
       return `<sup><a href="#footnote-${id}" id="footnote-ref-${id}" class="footnote-link">${id}</a></sup>`;
     }
   }
@@ -641,7 +682,7 @@ function transformRun(runElement: Element, noteContext: NoteContext): string {
   const endnoteRef = runElement.querySelector('w\\:endnoteReference, endnoteReference');
   if (endnoteRef) {
     const id = endnoteRef.getAttribute('w:id') || endnoteRef.getAttribute('id');
-    if (id && noteContext.endnotes.has(id)) {
+    if (id && context.notes.endnotes.has(id)) {
       return `<sup><a href="#endnote-${id}" id="endnote-ref-${id}" class="endnote-link">${id}</a></sup>`;
     }
   }
@@ -669,10 +710,22 @@ function transformRun(runElement: Element, noteContext: NoteContext): string {
 /**
  * Transform a Word paragraph element to HTML
  */
-function transformParagraph(paragraphElement: Element, noteContext: NoteContext): string {
+function transformParagraph(paragraphElement: Element, context: TransformContext): string {
   // Get paragraph properties
   const pPrElement = paragraphElement.querySelector('w\\:pPr, pPr');
   const paragraphProps = extractParagraphProperties(pPrElement);
+
+  // Handle numbering if present
+  let numberingPrefix = '';
+  if (paragraphProps.numbering?.numId) {
+    const counter = getOrCreateCounter(context.numbering, paragraphProps.numbering.numId);
+    const level = paragraphProps.numbering.ilvl || 0;
+    const currentNumber = incrementCounter(counter, level);
+    
+    // For now, use decimal numbering as default - future enhancement will read from numbering.xml
+    const numberingText = getNumberingText(currentNumber, 'decimal');
+    numberingPrefix = `<span class="numbering-text">${numberingText}. </span>`;
+  }
 
   // Transform all runs in the paragraph, including those within tracked change elements
   const allRunElements = paragraphElement.querySelectorAll('w\\:r, r');
@@ -681,28 +734,30 @@ function transformParagraph(paragraphElement: Element, noteContext: NoteContext)
   // which checks parent elements for revision information
 
   const runContent = Array.from(allRunElements)
-    .map(run => transformRun(run, noteContext))
+    .map(run => transformRun(run, context))
     .filter(content => content.trim())
     .join('');
 
-  if (!runContent.trim()) {
+  if (!runContent.trim() && !numberingPrefix) {
     return '<p></p>'; // Empty paragraph
   }
 
   // Apply paragraph styling
   const styles = createParagraphStyles(paragraphProps);
   
+  const content = numberingPrefix + runContent;
+  
   if (styles) {
-    return `<p style="${styles}">${runContent}</p>`;
+    return `<p style="${styles}">${content}</p>`;
   }
   
-  return `<p>${runContent}</p>`;
+  return `<p>${content}</p>`;
 }
 
 /**
  * Transform a Word table cell element to HTML
  */
-function transformTableCell(cellElement: Element, noteContext: NoteContext): string {
+function transformTableCell(cellElement: Element, context: TransformContext): string {
   // Get cell properties
   const tcPrElement = cellElement.querySelector('w\\:tcPr, tcPr');
   const cellProps = extractTableCellProperties(tcPrElement);
@@ -713,7 +768,7 @@ function transformTableCell(cellElement: Element, noteContext: NoteContext): str
   let cellContent = '';
   if (paragraphElements.length > 0) {
     cellContent = Array.from(paragraphElements)
-      .map(p => transformParagraph(p, noteContext))
+      .map(p => transformParagraph(p, context))
       .filter(html => html.trim())
       .join('\n');
   }
@@ -731,12 +786,12 @@ function transformTableCell(cellElement: Element, noteContext: NoteContext): str
 /**
  * Transform a Word table row element to HTML
  */
-function transformTableRow(rowElement: Element, noteContext: NoteContext): string {
+function transformTableRow(rowElement: Element, context: TransformContext): string {
   // Transform all cells in the row
   const cellElements = rowElement.querySelectorAll('w\\:tc, tc');
   
   const cellContent = Array.from(cellElements)
-    .map(cell => transformTableCell(cell, noteContext))
+    .map(cell => transformTableCell(cell, context))
     .filter(html => html.trim())
     .join('');
 
@@ -750,7 +805,7 @@ function transformTableRow(rowElement: Element, noteContext: NoteContext): strin
 /**
  * Transform a Word table element to HTML
  */
-function transformTable(tableElement: Element, noteContext: NoteContext): string {
+function transformTable(tableElement: Element, context: TransformContext): string {
   // Get table properties
   const tblPrElement = tableElement.querySelector('w\\:tblPr, tblPr');
   const tableProps = extractTableProperties(tblPrElement);
@@ -759,7 +814,7 @@ function transformTable(tableElement: Element, noteContext: NoteContext): string
   const rowElements = tableElement.querySelectorAll('w\\:tr, tr');
   
   const rowContent = Array.from(rowElements)
-    .map(row => transformTableRow(row, noteContext))
+    .map(row => transformTableRow(row, context))
     .filter(html => html.trim())
     .join('\n');
 
@@ -793,6 +848,12 @@ export function transformDocumentToHtml(
   // Create note context for footnotes and endnotes
   const noteContext = createNoteContext(footnotes, endnotes);
   
+  // Create transform context with notes and numbering
+  const context: TransformContext = {
+    notes: noteContext,
+    numbering: createNumberingCounters()
+  };
+  
   // Find all paragraph and table elements in the document body
   const body = documentXml.querySelector('w\\:body, body');
   if (!body) {
@@ -820,9 +881,9 @@ export function transformDocumentToHtml(
     .map(element => {
       const tagName = element.tagName.toLowerCase();
       if (tagName.match(/^(w:)?p$/)) {
-        return transformParagraph(element, noteContext);
+        return transformParagraph(element, context);
       } else if (tagName.match(/^(w:)?tbl$/)) {
-        return transformTable(element, noteContext);
+        return transformTable(element, context);
       }
       return '';
     })
