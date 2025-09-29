@@ -345,5 +345,274 @@ describe('docxHtmlTransformer', () => {
       expect(result.html).toBe('<p><span style="font-weight: bold">Bold text without namespace</span></p>');
       expect(result.plainText).toBe('Bold text without namespace');
     });
+
+    it('should transform run with highlight formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:highlight w:val="yellow" />
+                </w:rPr>
+                <w:t>Highlighted text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="background-color: #ffff00">Highlighted text</span></p>');
+      expect(result.plainText).toBe('Highlighted text');
+    });
+
+    it('should transform run with custom highlight color', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:highlight w:val="#ff5733" />
+                </w:rPr>
+                <w:t>Custom highlighted text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="background-color: #ff5733">Custom highlighted text</span></p>');
+      expect(result.plainText).toBe('Custom highlighted text');
+    });
+
+    it('should transform run with strikethrough formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:strike />
+                </w:rPr>
+                <w:t>Strikethrough text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="text-decoration: line-through">Strikethrough text</span></p>');
+      expect(result.plainText).toBe('Strikethrough text');
+    });
+
+    it('should transform run with double strikethrough formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:dstrike />
+                </w:rPr>
+                <w:t>Double strikethrough text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="text-decoration: line-through">Double strikethrough text</span></p>');
+      expect(result.plainText).toBe('Double strikethrough text');
+    });
+
+    it('should transform run with single underline formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:u w:val="single" />
+                </w:rPr>
+                <w:t>Single underlined text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="text-decoration: underline">Single underlined text</span></p>');
+      expect(result.plainText).toBe('Single underlined text');
+    });
+
+    it('should transform run with double underline formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:u w:val="double" />
+                </w:rPr>
+                <w:t>Double underlined text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="text-decoration: underline; text-decoration-style: double">Double underlined text</span></p>');
+      expect(result.plainText).toBe('Double underlined text');
+    });
+
+    it('should transform run with no underline formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:u w:val="none" />
+                </w:rPr>
+                <w:t>No underline text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="text-decoration: none">No underline text</span></p>');
+      expect(result.plainText).toBe('No underline text');
+    });
+
+    it('should transform run with all capitals formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:caps />
+                </w:rPr>
+                <w:t>all capitals text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="text-transform: uppercase">all capitals text</span></p>');
+      expect(result.plainText).toBe('all capitals text');
+    });
+
+    it('should transform run with small capitals formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:smallCaps />
+                </w:rPr>
+                <w:t>Small Capitals Text</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="font-variant: small-caps">Small Capitals Text</span></p>');
+      expect(result.plainText).toBe('Small Capitals Text');
+    });
+
+    it('should transform run with superscript formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:vertAlign w:val="superscript" />
+                </w:rPr>
+                <w:t>superscript</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="vertical-align: super; font-size: smaller">superscript</span></p>');
+      expect(result.plainText).toBe('superscript');
+    });
+
+    it('should transform run with subscript formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:vertAlign w:val="subscript" />
+                </w:rPr>
+                <w:t>subscript</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="vertical-align: sub; font-size: smaller">subscript</span></p>');
+      expect(result.plainText).toBe('subscript');
+    });
+
+    it('should transform run with multiple new formatting properties', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:b />
+                  <w:strike />
+                  <w:highlight w:val="yellow" />
+                  <w:caps />
+                  <w:u w:val="double" />
+                </w:rPr>
+                <w:t>complex formatting</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      const expectedStyle = 'font-weight: bold; text-decoration: underline line-through; text-decoration-style: double; background-color: #ffff00; text-transform: uppercase';
+      expect(result.html).toBe(`<p><span style="${expectedStyle}">complex formatting</span></p>`);
+      expect(result.plainText).toBe('complex formatting');
+    });
   });
 });
