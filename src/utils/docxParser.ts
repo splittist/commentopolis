@@ -1,9 +1,11 @@
 import JSZip from 'jszip';
-import type { DocumentComment } from '../types';
+import type { DocumentComment, DocumentFootnote } from '../types';
 import { transformDocumentToHtml, type TransformedContent } from './docxHtmlTransformer';
 
 export interface DocxParseResult {
   comments: DocumentComment[];
+  footnotes: DocumentFootnote[];
+  endnotes: DocumentFootnote[];
   error?: string;
   // Additional XML DOM objects
   documentXml?: Document;
@@ -11,6 +13,8 @@ export interface DocxParseResult {
   numberingXml?: Document;
   commentsXml?: Document;
   commentsExtendedXml?: Document;
+  footnotesXml?: Document;
+  endnotesXml?: Document;
   // Transformed HTML content
   transformedContent?: TransformedContent;
 }
@@ -90,6 +94,83 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
 }
 
 /**
+ * Parse XML text to extract footnote/endnote data
+ */
+function parseFootnotesEndnotesXml(
+  xmlText: string, 
+  documentId: string, 
+  type: 'footnote' | 'endnote'
+): DocumentFootnote[] {
+  const notes: DocumentFootnote[] = [];
+  
+  const xmlDoc = parseXmlToDom(xmlText, `${type}s.xml`);
+  if (!xmlDoc) {
+    return notes;
+  }
+  
+  try {
+    // Find all footnote/endnote elements
+    const noteElements = xmlDoc.querySelectorAll(`w\\:${type}, ${type}`);
+    
+    noteElements.forEach((noteEl, index) => {
+      try {
+        const id = noteEl.getAttribute('w:id') || noteEl.getAttribute('id') || `${type}-${index}`;
+        const noteType = noteEl.getAttribute('w:type') || noteEl.getAttribute('type') || 'normal';
+        
+        // Skip separator and continuation separator footnotes - they're formatting elements
+        if (noteType === 'separator' || noteType === 'continuationSeparator') {
+          return;
+        }
+        
+        // Extract content from nested paragraphs and runs
+        const paragraphElements = noteEl.querySelectorAll('w\\:p, p');
+        
+        // Build HTML content
+        const htmlParts: string[] = [];
+        const textParts: string[] = [];
+        
+        paragraphElements.forEach(pEl => {
+          const runElements = pEl.querySelectorAll('w\\:r, r');
+          
+          const runContent = Array.from(runElements).map(rEl => {
+            const textElements = rEl.querySelectorAll('w\\:t, t');
+            return Array.from(textElements)
+              .map(tEl => tEl.textContent || '')
+              .join('');
+          }).join('');
+          
+          if (runContent.trim()) {
+            htmlParts.push(`<p>${runContent.trim()}</p>`);
+            textParts.push(runContent.trim());
+          }
+        });
+        
+        const content = htmlParts.join('');
+        const plainText = textParts.join(' ');
+        
+        if (content && plainText) {
+          notes.push({
+            id: `${documentId}-${type}-${id}`,
+            type,
+            content,
+            plainText,
+            documentId,
+            noteType: noteType as 'normal' | 'separator' | 'continuationSeparator'
+          });
+        }
+      } catch (error) {
+        console.warn(`Error parsing individual ${type}:`, error);
+      }
+    });
+    
+  } catch (error) {
+    console.error(`Error parsing ${type}s XML:`, error);
+  }
+  
+  return notes;
+}
+
+/**
  * Parse a .docx file to extract comments and additional XML parts
  */
 export async function parseDocxComments(
@@ -109,7 +190,9 @@ export async function parseDocxComments(
       styles: 'word/styles.xml',
       numbering: 'word/numbering.xml',
       comments: 'word/comments.xml',
-      commentsExtended: 'word/commentsExtended.xml'
+      commentsExtended: 'word/commentsExtended.xml',
+      footnotes: 'word/footnotes.xml',
+      endnotes: 'word/endnotes.xml'
     };
     
     // Extract XML files asynchronously
@@ -133,6 +216,8 @@ export async function parseDocxComments(
     // Parse XML strings to DOM objects
     const result: DocxParseResult = {
       comments: [],
+      footnotes: [],
+      endnotes: [],
       error: undefined
     };
     
@@ -158,6 +243,16 @@ export async function parseDocxComments(
             case 'commentsExtended':
               result.commentsExtendedXml = xmlDoc;
               break;
+            case 'footnotes':
+              result.footnotesXml = xmlDoc;
+              // Parse footnotes
+              result.footnotes = parseFootnotesEndnotesXml(content, documentId, 'footnote');
+              break;
+            case 'endnotes':
+              result.endnotesXml = xmlDoc;
+              // Parse endnotes
+              result.endnotes = parseFootnotesEndnotesXml(content, documentId, 'endnote');
+              break;
           }
         }
       } else {
@@ -172,13 +267,19 @@ export async function parseDocxComments(
     if (!result.documentXml) {
       return {
         comments: [],
+        footnotes: [],
+        endnotes: [],
         error: 'Required document.xml not found in .docx file'
       };
     }
 
     // Transform document content to HTML
     try {
-      result.transformedContent = transformDocumentToHtml(result.documentXml);
+      result.transformedContent = transformDocumentToHtml(
+        result.documentXml, 
+        result.footnotes, 
+        result.endnotes
+      );
     } catch (error) {
       console.warn('Error transforming document to HTML:', error);
       // Don't fail the entire parse operation if HTML transformation fails
@@ -194,6 +295,8 @@ export async function parseDocxComments(
     console.error('Error parsing docx file:', error);
     return {
       comments: [],
+      footnotes: [],
+      endnotes: [],
       error: error instanceof Error ? error.message : 'Unknown parsing error'
     };
   }

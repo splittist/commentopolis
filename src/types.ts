@@ -29,6 +29,16 @@ export interface DocumentComment {
   reference?: string; // Reference to the commented text/location
 }
 
+// Footnote/Endnote data extracted from .docx files
+export interface DocumentFootnote {
+  id: string;
+  type: 'footnote' | 'endnote';
+  content: string; // HTML content of the footnote/endnote
+  plainText: string; // Plain text version for search
+  documentId: string;
+  noteType?: 'normal' | 'separator' | 'continuationSeparator'; // Special footnote types
+}
+
 // Document upload and management
 export interface UploadedDocument {
   id: string;
@@ -38,6 +48,8 @@ export interface UploadedDocument {
   size: number;
   type: string;
   comments?: DocumentComment[]; // Comments extracted from the document
+  footnotes?: DocumentFootnote[]; // Footnotes extracted from the document
+  endnotes?: DocumentFootnote[]; // Endnotes extracted from the document
   isProcessing?: boolean; // Flag to indicate if document is being parsed
   processingError?: string; // Error message if parsing failed
   // Additional XML metadata for advanced features
@@ -47,6 +59,8 @@ export interface UploadedDocument {
     numberingXml?: Document;
     commentsXml?: Document;
     commentsExtendedXml?: Document;
+    footnotesXml?: Document;
+    endnotesXml?: Document;
   };
   // Transformed HTML content
   transformedContent?: {

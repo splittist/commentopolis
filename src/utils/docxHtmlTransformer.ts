@@ -2,6 +2,7 @@
  * DOCX to HTML Transformer
  * Converts Word document runs and paragraphs from XML to HTML format
  */
+import type { DocumentFootnote } from '../types';
 
 export interface TransformedContent {
   html: string;
@@ -408,9 +409,39 @@ function extractRevisionInfo(element: Element): RunProperties['revision'] | null
 }
 
 /**
+ * Create footnote/endnote context for transformation
+ */
+interface NoteContext {
+  footnotes: Map<string, DocumentFootnote>;
+  endnotes: Map<string, DocumentFootnote>;
+}
+
+/**
+ * Create note context from footnotes and endnotes arrays
+ */
+function createNoteContext(footnotes: DocumentFootnote[], endnotes: DocumentFootnote[]): NoteContext {
+  const footnoteMap = new Map<string, DocumentFootnote>();
+  const endnoteMap = new Map<string, DocumentFootnote>();
+  
+  footnotes.forEach(note => {
+    // Extract the original ID from our prefixed ID
+    const originalId = note.id.split('-').pop() || note.id;
+    footnoteMap.set(originalId, note);
+  });
+  
+  endnotes.forEach(note => {
+    // Extract the original ID from our prefixed ID  
+    const originalId = note.id.split('-').pop() || note.id;
+    endnoteMap.set(originalId, note);
+  });
+  
+  return { footnotes: footnoteMap, endnotes: endnoteMap };
+}
+
+/**
  * Transform a Word run element to HTML
  */
-function transformRun(runElement: Element): string {
+function transformRun(runElement: Element, noteContext: NoteContext): string {
   // Check if this run is inside a tracked change element
   const revisionInfo = extractRevisionInfo(runElement);
   
@@ -421,6 +452,23 @@ function transformRun(runElement: Element): string {
   // Apply revision info to run properties
   if (revisionInfo) {
     runProps.revision = revisionInfo;
+  }
+
+  // Check for footnote/endnote references
+  const footnoteRef = runElement.querySelector('w\\:footnoteReference, footnoteReference');
+  if (footnoteRef) {
+    const id = footnoteRef.getAttribute('w:id') || footnoteRef.getAttribute('id');
+    if (id && noteContext.footnotes.has(id)) {
+      return `<sup><a href="#footnote-${id}" id="footnote-ref-${id}" class="footnote-link">${id}</a></sup>`;
+    }
+  }
+
+  const endnoteRef = runElement.querySelector('w\\:endnoteReference, endnoteReference');
+  if (endnoteRef) {
+    const id = endnoteRef.getAttribute('w:id') || endnoteRef.getAttribute('id');
+    if (id && noteContext.endnotes.has(id)) {
+      return `<sup><a href="#endnote-${id}" id="endnote-ref-${id}" class="endnote-link">${id}</a></sup>`;
+    }
   }
 
   // Get text content
@@ -446,7 +494,7 @@ function transformRun(runElement: Element): string {
 /**
  * Transform a Word paragraph element to HTML
  */
-function transformParagraph(paragraphElement: Element): string {
+function transformParagraph(paragraphElement: Element, noteContext: NoteContext): string {
   // Get paragraph properties
   const pPrElement = paragraphElement.querySelector('w\\:pPr, pPr');
   const paragraphProps = extractParagraphProperties(pPrElement);
@@ -458,7 +506,7 @@ function transformParagraph(paragraphElement: Element): string {
   // which checks parent elements for revision information
 
   const runContent = Array.from(allRunElements)
-    .map(run => transformRun(run))
+    .map(run => transformRun(run, noteContext))
     .filter(content => content.trim())
     .join('');
 
@@ -488,7 +536,14 @@ function escapeHtml(text: string): string {
 /**
  * Transform Word document XML to HTML
  */
-export function transformDocumentToHtml(documentXml: Document): TransformedContent {
+export function transformDocumentToHtml(
+  documentXml: Document,
+  footnotes: DocumentFootnote[] = [],
+  endnotes: DocumentFootnote[] = []
+): TransformedContent {
+  // Create note context for footnotes and endnotes
+  const noteContext = createNoteContext(footnotes, endnotes);
+  
   // Find all paragraph elements in the document body
   const body = documentXml.querySelector('w\\:body, body');
   if (!body) {
@@ -509,19 +564,60 @@ export function transformDocumentToHtml(documentXml: Document): TransformedConte
 
   // Transform each paragraph
   const htmlParts = Array.from(paragraphElements)
-    .map(p => transformParagraph(p))
+    .map(p => transformParagraph(p, noteContext))
     .filter(html => html.trim());
 
-  const html = htmlParts.join('\n');
+  let html = htmlParts.join('\n');
   
-  // Extract plain text for search/indexing
-  const plainText = Array.from(paragraphElements)
+  // Add footnotes at the end of the document
+  if (footnotes.length > 0) {
+    const footnoteHtml = footnotes
+      .filter(note => note.noteType === 'normal') // Only show normal footnotes, not separators
+      .map(note => {
+        const id = note.id.split('-').pop() || note.id;
+        return `<div class="footnote" id="footnote-${id}">
+          <a href="#footnote-ref-${id}" class="footnote-backlink">${id}.</a> ${note.content}
+        </div>`;
+      })
+      .join('\n');
+    
+    if (footnoteHtml) {
+      html += '\n<div class="footnotes">\n<hr class="footnotes-separator">\n' + footnoteHtml + '\n</div>';
+    }
+  }
+  
+  // Add endnotes at the end of the document (after footnotes)
+  if (endnotes.length > 0) {
+    const endnoteHtml = endnotes
+      .filter(note => note.noteType === 'normal') // Only show normal endnotes, not separators
+      .map(note => {
+        const id = note.id.split('-').pop() || note.id;
+        return `<div class="endnote" id="endnote-${id}">
+          <a href="#endnote-ref-${id}" class="endnote-backlink">${id}.</a> ${note.content}
+        </div>`;
+      })
+      .join('\n');
+    
+    if (endnoteHtml) {
+      html += '\n<div class="endnotes">\n<hr class="endnotes-separator">\n' + endnoteHtml + '\n</div>';
+    }
+  }
+  
+  // Extract plain text for search/indexing (including footnotes/endnotes)
+  const mainText = Array.from(paragraphElements)
     .map(p => {
       const textElements = p.querySelectorAll('w\\:t, t');
       return Array.from(textElements)
         .map(el => el.textContent || '')
         .join('');
     })
+    .filter(text => text.trim())
+    .join('\n');
+  
+  const footnoteText = footnotes.map(note => note.plainText).join(' ');
+  const endnoteText = endnotes.map(note => note.plainText).join(' ');
+  
+  const plainText = [mainText, footnoteText, endnoteText]
     .filter(text => text.trim())
     .join('\n');
 

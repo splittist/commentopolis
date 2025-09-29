@@ -53,6 +53,8 @@ export const useDocuments = (): DocumentStateManager => {
           ? { 
               ...doc, 
               comments: parseResult.comments,
+              footnotes: parseResult.footnotes || [],
+              endnotes: parseResult.endnotes || [],
               isProcessing: false,
               processingError: parseResult.error,
               xmlMetadata: {
@@ -61,6 +63,8 @@ export const useDocuments = (): DocumentStateManager => {
                 numberingXml: parseResult.numberingXml,
                 commentsXml: parseResult.commentsXml,
                 commentsExtendedXml: parseResult.commentsExtendedXml,
+                footnotesXml: parseResult.footnotesXml,
+                endnotesXml: parseResult.endnotesXml,
               },
               transformedContent: parseResult.transformedContent
             }
@@ -73,6 +77,12 @@ export const useDocuments = (): DocumentStateManager => {
         toast.success(`Extracted ${parseResult.comments.length} comment(s) from "${file.name}"`);
       } else if (!parseResult.error) {
         toast(`No comments found in "${file.name}"`);
+      }
+
+      // Show success message for footnotes/endnotes if found
+      const totalNotes = (parseResult.footnotes?.length || 0) + (parseResult.endnotes?.length || 0);
+      if (totalNotes > 0) {
+        toast.success(`Found ${parseResult.footnotes?.length || 0} footnote(s) and ${parseResult.endnotes?.length || 0} endnote(s) in "${file.name}"`);
       }
 
       // Show error if parsing failed
