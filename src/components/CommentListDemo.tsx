@@ -28,7 +28,8 @@ const sampleComments: DocumentComment[] = [
     author: 'Sarah Johnson',
     initial: 'SJ',
     date: new Date('2023-12-01T14:30:00Z'),
-    text: 'We should consider the budget implications of this proposal. The current estimates might be too optimistic given the market conditions.',
+    plainText: 'We should consider the budget implications of this proposal. The current estimates might be too optimistic given the market conditions.',
+    content: '<p>We should consider the budget implications of this proposal. The current estimates might be too optimistic given the market conditions.</p>',
     documentId: 'demo-doc1',
     reference: 'Page 2, Paragraph 3',
     done: false,
@@ -39,7 +40,8 @@ const sampleComments: DocumentComment[] = [
     author: 'Michael Chen',
     initial: 'MC',
     date: new Date('2023-12-01T15:45:00Z'),
-    text: 'Great point about the timeline. However, I think we can accelerate the delivery if we prioritize the core features first.',
+    plainText: 'Great point about the timeline. However, I think we can accelerate the delivery if we prioritize the core features first.',
+    content: '<p>Great point about the timeline. However, I think we can accelerate the delivery if we prioritize the core features first.</p>',
     documentId: 'demo-doc1',
     reference: 'Page 3, Table 1',
     done: true, // This comment is marked as done
@@ -50,7 +52,8 @@ const sampleComments: DocumentComment[] = [
     author: 'Emily Rodriguez',
     initial: 'ER',
     date: new Date('2023-12-02T09:15:00Z'),
-    text: 'The technical architecture looks solid, but we need to ensure compatibility with our existing systems.',
+    plainText: 'The technical architecture looks solid, but we need to ensure compatibility with our existing systems.',
+    content: '<p>The technical architecture looks solid, but we need to ensure compatibility with our existing systems.</p>',
     documentId: 'demo-doc2',
     reference: 'Section 4.2',
     done: false,
@@ -61,7 +64,8 @@ const sampleComments: DocumentComment[] = [
     author: 'David Kim',
     initial: 'DK',
     date: new Date('2023-12-02T11:20:00Z'),
-    text: 'I agree with the risk assessment. We should add more contingency measures for the high-risk items.',
+    plainText: 'I agree with the risk assessment. We should add more contingency measures for the high-risk items.',
+    content: '<p>I agree with the risk assessment. We should add more contingency measures for the high-risk items.</p>',
     documentId: 'demo-doc2',
     reference: 'Risk Matrix',
     done: true, // This comment is marked as done
@@ -72,7 +76,8 @@ const sampleComments: DocumentComment[] = [
     author: 'Lisa Wang',
     initial: 'LW',
     date: new Date('2023-12-03T16:10:00Z'),
-    text: 'This section needs more detail. Can we expand on the implementation strategy?',
+    plainText: 'This section needs more detail. Can we expand on the implementation strategy?',
+    content: '<p>This section needs more detail. Can we expand on the implementation strategy?</p>',
     documentId: 'demo-doc1',
     reference: 'Page 5, Implementation',
     done: false,
@@ -83,7 +88,8 @@ const sampleComments: DocumentComment[] = [
     author: 'Michael Chen',
     initial: 'MC',
     date: new Date('2023-12-01T16:00:00Z'),
-    text: 'Good point Sarah. I\'ve reviewed the latest market data and agree we should be more conservative. Let me update the projections.',
+    plainText: 'Good point Sarah. I\'ve reviewed the latest market data and agree we should be more conservative. Let me update the projections.',
+    content: '<p>Good point Sarah. I\'ve reviewed the latest market data and agree we should be more conservative. Let me update the projections.</p>',
     documentId: 'demo-doc1',
     reference: 'Page 2, Paragraph 3',
     parentId: 'demo-comment1', // Reply to Sarah's comment
@@ -95,7 +101,8 @@ const sampleComments: DocumentComment[] = [
     author: 'David Kim',
     initial: 'DK',
     date: new Date('2023-12-02T10:30:00Z'),
-    text: 'I can help with the compatibility testing. Let\'s schedule a technical review meeting.',
+    plainText: 'I can help with the compatibility testing. Let\'s schedule a technical review meeting.',
+    content: '<p>I can help with the compatibility testing. Let\'s schedule a technical review meeting.</p>',
     documentId: 'demo-doc2',
     reference: 'Section 4.2',
     parentId: 'demo-comment3', // Reply to Emily's comment
@@ -343,7 +350,7 @@ const DemoCommentList: React.FC = () => {
 
                 {/* Comment text */}
                 <div className="text-gray-700 leading-relaxed">
-                  {comment.text}
+                  {comment.plainText}
                 </div>
 
                 {/* Selection indicator */}

@@ -9,7 +9,8 @@ describe('useCommentFilters', () => {
       id: 'comment1',
       author: 'John Doe',
       date: new Date('2023-01-01T10:00:00Z'),
-      text: 'This is a test comment about implementation',
+      plainText: 'This is a test comment about implementation',
+      content: '<p>This is a test comment about implementation</p>',
       documentId: 'doc1',
       reference: 'Page 1',
     },
@@ -17,7 +18,8 @@ describe('useCommentFilters', () => {
       id: 'comment2',
       author: 'Jane Smith',
       date: new Date('2023-01-02T11:00:00Z'),
-      text: 'Another comment about the project',
+      plainText: 'Another comment about the project',
+      content: '<p>Another comment about the project</p>',
       documentId: 'doc1',
       reference: 'Page 2',
     },
@@ -25,7 +27,8 @@ describe('useCommentFilters', () => {
       id: 'comment3',
       author: 'John Doe',
       date: new Date('2023-01-03T12:00:00Z'),
-      text: 'Final comment on the design',
+      plainText: 'Final comment on the design',
+      content: '<p>Final comment on the design</p>',
       documentId: 'doc2',
     },
   ];
@@ -60,7 +63,7 @@ describe('useCommentFilters', () => {
 
     const filteredComments = result.current.getFilteredComments(mockComments);
     expect(filteredComments).toHaveLength(1);
-    expect(filteredComments[0].text).toContain('implementation');
+    expect(filteredComments[0].plainText).toContain('implementation');
   });
 
   it('should filter comments by date range', () => {
@@ -88,7 +91,7 @@ describe('useCommentFilters', () => {
     const filteredComments = result.current.getFilteredComments(mockComments);
     expect(filteredComments).toHaveLength(1);
     expect(filteredComments[0].author).toBe('John Doe');
-    expect(filteredComments[0].text).toContain('design');
+    expect(filteredComments[0].plainText).toContain('design');
   });
 
   it('should reset all filters', () => {

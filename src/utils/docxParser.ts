@@ -65,20 +65,40 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
         const initial = commentEl.getAttribute('w:initials') || commentEl.getAttribute('initials') || '';
         const dateStr = commentEl.getAttribute('w:date') || commentEl.getAttribute('date') || '';
         
-        // Extract comment text from nested elements
-        const textElements = commentEl.querySelectorAll('w\\:t, t');
-        const text = Array.from(textElements)
-          .map(el => el.textContent || '')
-          .join(' ')
-          .trim();
+        // Extract content from nested paragraphs and runs
+        const paragraphElements = commentEl.querySelectorAll('w\\:p, p');
         
-        if (text) {
+        // Build HTML content
+        const htmlParts: string[] = [];
+        const textParts: string[] = [];
+        
+        paragraphElements.forEach(pEl => {
+          const runElements = pEl.querySelectorAll('w\\:r, r');
+          
+          const runContent = Array.from(runElements).map(rEl => {
+            const textElements = rEl.querySelectorAll('w\\:t, t');
+            return Array.from(textElements)
+              .map(tEl => tEl.textContent || '')
+              .join('');
+          }).join('');
+          
+          if (runContent.trim()) {
+            htmlParts.push(`<p>${runContent.trim()}</p>`);
+            textParts.push(runContent.trim());
+          }
+        });
+        
+        const content = htmlParts.join('');
+        const plainText = textParts.join(' ');
+        
+        if (content && plainText) {
           comments.push({
             id: `${documentId}-${id}`,
             author,
             initial,
             date: dateStr ? new Date(dateStr) : new Date(),
-            text,
+            plainText,
+            content,
             documentId,
             reference: `Comment ${id}`
           });

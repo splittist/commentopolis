@@ -85,7 +85,7 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
                     return parent ? (
                       <div className="mt-1 pl-3 border-l-2 border-purple-300">
                         <div className="font-medium">{parent.author}</div>
-                        <div className="text-purple-600 truncate">{parent.text.slice(0, 100)}{parent.text.length > 100 ? '...' : ''}</div>
+                        <div className="text-purple-600 truncate">{parent.plainText.slice(0, 100)}{parent.plainText.length > 100 ? '...' : ''}</div>
                       </div>
                     ) : (
                       <span className="text-purple-600"> Comment not found</span>
@@ -104,7 +104,7 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
                           {child ? (
                             <div>
                               <span className="font-medium">{child.author}</span>
-                              <div className="text-purple-600 truncate">{child.text.slice(0, 80)}{child.text.length > 80 ? '...' : ''}</div>
+                              <div className="text-purple-600 truncate">{child.plainText.slice(0, 80)}{child.plainText.length > 80 ? '...' : ''}</div>
                             </div>
                           ) : (
                             <div className="text-purple-500">Reply not found</div>
@@ -148,9 +148,10 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
           <div className="text-sm font-medium text-gray-700 mb-2">
             Comment
           </div>
-          <div className="text-gray-800 leading-relaxed">
-            {comment.text}
-          </div>
+          <div 
+            className="text-gray-800 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: comment.content }}
+          />
         </div>
 
         {/* Metadata */}

@@ -29,7 +29,8 @@ describe('DocumentList', () => {
           id: 'comment1',
           author: 'John Doe',
           date: new Date(),
-          text: 'Test comment',
+          plainText: 'Test comment',
+          content: '<p>Test comment</p>',
           documentId: 'doc1'
         }
       ]

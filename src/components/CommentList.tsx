@@ -207,7 +207,7 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
 
                 {/* Comment text */}
                 <div className="text-gray-700 leading-relaxed">
-                  {comment.text}
+                  {comment.plainText}
                 </div>
 
                 {/* Selection indicator */}

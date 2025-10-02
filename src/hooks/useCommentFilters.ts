@@ -56,7 +56,7 @@ export const useCommentFilters = (): CommentFilterState => {
       // Full-text search filter
       if (filters.searchText) {
         const searchTerm = filters.searchText.toLowerCase();
-        const matchesText = comment.text.toLowerCase().includes(searchTerm);
+        const matchesText = comment.plainText.toLowerCase().includes(searchTerm);
         const matchesAuthor = comment.author.toLowerCase().includes(searchTerm);
         const matchesReference = comment.reference?.toLowerCase().includes(searchTerm) || false;
         
