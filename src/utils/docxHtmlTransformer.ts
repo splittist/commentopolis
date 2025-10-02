@@ -8,7 +8,9 @@ import {
   createNumberingCounters, 
   getOrCreateCounter, 
   incrementCounter,
-  type NumberingCounters
+  type NumberingCounters,
+  type NumberingCounter,
+  type NumberingScheme
 } from './numbering';
 
 export interface TransformedContent {
@@ -54,6 +56,7 @@ export interface ParagraphProperties {
     numId?: string;
     ilvl?: number;
   };
+  pStyle?: string; // Paragraph style reference
 }
 
 export interface TableProperties {
@@ -187,6 +190,15 @@ function extractParagraphProperties(pPrElement: Element | null): ParagraphProper
   const props: ParagraphProperties = {};
   
   if (!pPrElement) return props;
+
+  // Paragraph style reference
+  const pStyleElement = pPrElement.querySelector('w\\:pStyle, pStyle');
+  if (pStyleElement) {
+    const styleId = pStyleElement.getAttribute('w:val') || pStyleElement.getAttribute('val');
+    if (styleId) {
+      props.pStyle = styleId;
+    }
+  }
 
   // Alignment
   const jcElement = pPrElement.querySelector('w\\:jc, jc');
@@ -617,6 +629,35 @@ function extractRevisionInfo(element: Element): RunProperties['revision'] | null
 }
 
 /**
+ * Numbering definition from numbering.xml
+ */
+interface NumberingDefinition {
+  abstractNumId: string;
+  levels: Map<number, LevelDefinition>;
+}
+
+/**
+ * Level definition for numbering format
+ */
+interface LevelDefinition {
+  numFmt: string;
+  lvlText: string;
+  start?: number;
+}
+
+/**
+ * Style definition from styles.xml
+ */
+interface StyleDefinition {
+  styleId: string;
+  basedOn?: string;
+  numbering?: {
+    numId?: string;
+    ilvl?: number;
+  };
+}
+
+/**
  * Create footnote/endnote context for transformation
  */
 interface NoteContext {
@@ -625,11 +666,20 @@ interface NoteContext {
 }
 
 /**
- * Transform context including notes and numbering
+ * Numbering context with parsed definitions
+ */
+interface NumberingContext {
+  counters: NumberingCounters;
+  definitions: Map<string, NumberingDefinition>; // numId -> definition
+}
+
+/**
+ * Transform context including notes, numbering, and styles
  */
 interface TransformContext {
   notes: NoteContext;
-  numbering: NumberingCounters;
+  numbering: NumberingContext;
+  styles: Map<string, StyleDefinition>;
 }
 
 /**
@@ -652,6 +702,241 @@ function createNoteContext(footnotes: DocumentFootnote[], endnotes: DocumentFoot
   });
   
   return { footnotes: footnoteMap, endnotes: endnoteMap };
+}
+
+/**
+ * Parse numbering.xml to extract numbering definitions
+ */
+function parseNumberingDefinitions(numberingXml?: Document): Map<string, NumberingDefinition> {
+  const definitions = new Map<string, NumberingDefinition>();
+  
+  if (!numberingXml) {
+    return definitions;
+  }
+  
+  try {
+    // First, build a map of abstractNum definitions
+    const abstractNums = new Map<string, Map<number, LevelDefinition>>();
+    const abstractNumElements = numberingXml.querySelectorAll('w\\:abstractNum, abstractNum');
+    
+    abstractNumElements.forEach(abstractNumEl => {
+      const abstractNumId = abstractNumEl.getAttribute('w:abstractNumId') || 
+                            abstractNumEl.getAttribute('abstractNumId');
+      if (!abstractNumId) return;
+      
+      const levels = new Map<number, LevelDefinition>();
+      const lvlElements = abstractNumEl.querySelectorAll('w\\:lvl, lvl');
+      
+      lvlElements.forEach(lvlEl => {
+        const ilvl = lvlEl.getAttribute('w:ilvl') || lvlEl.getAttribute('ilvl');
+        if (ilvl === null) return;
+        
+        const level = parseInt(ilvl);
+        const numFmtEl = lvlEl.querySelector('w\\:numFmt, numFmt');
+        const lvlTextEl = lvlEl.querySelector('w\\:lvlText, lvlText');
+        const startEl = lvlEl.querySelector('w\\:start, start');
+        
+        const numFmt = numFmtEl?.getAttribute('w:val') || numFmtEl?.getAttribute('val') || 'decimal';
+        const lvlText = lvlTextEl?.getAttribute('w:val') || lvlTextEl?.getAttribute('val') || '%1';
+        const start = startEl?.getAttribute('w:val') || startEl?.getAttribute('val');
+        
+        levels.set(level, {
+          numFmt,
+          lvlText,
+          start: start ? parseInt(start) : undefined
+        });
+      });
+      
+      abstractNums.set(abstractNumId, levels);
+    });
+    
+    // Now, map num instances to abstractNum definitions
+    const numElements = numberingXml.querySelectorAll('w\\:num, num');
+    
+    numElements.forEach(numEl => {
+      const numId = numEl.getAttribute('w:numId') || numEl.getAttribute('numId');
+      if (!numId) return;
+      
+      const abstractNumIdEl = numEl.querySelector('w\\:abstractNumId, abstractNumId');
+      const abstractNumId = abstractNumIdEl?.getAttribute('w:val') || 
+                           abstractNumIdEl?.getAttribute('val');
+      
+      if (abstractNumId && abstractNums.has(abstractNumId)) {
+        const levels = abstractNums.get(abstractNumId)!;
+        definitions.set(numId, {
+          abstractNumId,
+          levels
+        });
+      }
+    });
+  } catch (error) {
+    console.warn('Error parsing numbering definitions:', error);
+  }
+  
+  return definitions;
+}
+
+/**
+ * Parse styles.xml to extract style definitions with numbering
+ */
+function parseStyleDefinitions(stylesXml?: Document): Map<string, StyleDefinition> {
+  const styles = new Map<string, StyleDefinition>();
+  
+  if (!stylesXml) {
+    return styles;
+  }
+  
+  try {
+    const styleElements = stylesXml.querySelectorAll('w\\:style, style');
+    
+    styleElements.forEach(styleEl => {
+      const styleId = styleEl.getAttribute('w:styleId') || styleEl.getAttribute('styleId');
+      if (!styleId) return;
+      
+      const styleDef: StyleDefinition = { styleId };
+      
+      // Check for basedOn relationship
+      const basedOnEl = styleEl.querySelector('w\\:basedOn, basedOn');
+      const basedOn = basedOnEl?.getAttribute('w:val') || basedOnEl?.getAttribute('val');
+      if (basedOn) {
+        styleDef.basedOn = basedOn;
+      }
+      
+      // Check for numbering in paragraph properties
+      const pPrEl = styleEl.querySelector('w\\:pPr, pPr');
+      if (pPrEl) {
+        const numPrEl = pPrEl.querySelector('w\\:numPr, numPr');
+        if (numPrEl) {
+          styleDef.numbering = {};
+          
+          const numIdEl = numPrEl.querySelector('w\\:numId, numId');
+          const numId = numIdEl?.getAttribute('w:val') || numIdEl?.getAttribute('val');
+          if (numId) {
+            styleDef.numbering.numId = numId;
+          }
+          
+          const ilvlEl = numPrEl.querySelector('w\\:ilvl, ilvl');
+          const ilvl = ilvlEl?.getAttribute('w:val') || ilvlEl?.getAttribute('val');
+          if (ilvl) {
+            styleDef.numbering.ilvl = parseInt(ilvl);
+          }
+        }
+      }
+      
+      styles.set(styleId, styleDef);
+    });
+  } catch (error) {
+    console.warn('Error parsing style definitions:', error);
+  }
+  
+  return styles;
+}
+
+/**
+ * Walk up the style basedOn hierarchy to find numbering properties
+ * Detects circular references to avoid infinite loops
+ */
+function getStyleNumbering(
+  styleId: string,
+  styles: Map<string, StyleDefinition>,
+  visited = new Set<string>()
+): { numId?: string; ilvl?: number } | undefined {
+  // Detect circular reference
+  if (visited.has(styleId)) {
+    console.warn(`Circular reference detected in style hierarchy: ${styleId}`);
+    return undefined;
+  }
+  
+  visited.add(styleId);
+  
+  const style = styles.get(styleId);
+  if (!style) {
+    return undefined;
+  }
+  
+  // If this style has numbering, return it
+  if (style.numbering) {
+    return style.numbering;
+  }
+  
+  // Otherwise, check the basedOn style
+  if (style.basedOn) {
+    return getStyleNumbering(style.basedOn, styles, visited);
+  }
+  
+  return undefined;
+}
+
+/**
+ * Get effective numbering properties for a paragraph
+ * Direct numbering takes priority over style-based numbering
+ */
+function getEffectiveNumbering(
+  paragraphProps: ParagraphProperties,
+  styles: Map<string, StyleDefinition>
+): { numId?: string; ilvl?: number } | undefined {
+  // Direct numbering has priority
+  if (paragraphProps.numbering?.numId) {
+    return paragraphProps.numbering;
+  }
+  
+  // Check for style-based numbering
+  if (paragraphProps.pStyle) {
+    return getStyleNumbering(paragraphProps.pStyle, styles);
+  }
+  
+  return undefined;
+}
+
+/**
+ * Apply level text template to counter values
+ * Example: "%1.%2" with counters [3, 2] becomes "3.2"
+ */
+function applyLevelText(
+  lvlText: string,
+  counter: NumberingCounter,
+  currentLevel: number,
+  definitions: Map<string, NumberingDefinition>,
+  numId: string
+): string {
+  let result = lvlText;
+  
+  const definition = definitions.get(numId);
+  if (!definition) {
+    return result;
+  }
+  
+  // Replace placeholders like %1, %2, %3 etc.
+  for (let level = 0; level <= currentLevel; level++) {
+    const placeholder = `%${level + 1}`;
+    if (result.includes(placeholder)) {
+      const counterValue = counter.counters[level] || 0;
+      const levelDef = definition.levels.get(level);
+      
+      if (levelDef) {
+        // Map Word numFmt to our NumberingScheme
+        let scheme: string = levelDef.numFmt;
+        // Word uses different names - map them
+        if (scheme === 'lowerLetter') scheme = 'lowerLetter';
+        else if (scheme === 'upperLetter') scheme = 'upperLetter';
+        else if (scheme === 'lowerRoman') scheme = 'lowerRoman';
+        else if (scheme === 'upperRoman') scheme = 'upperRoman';
+        else if (scheme === 'ordinal') scheme = 'ordinal';
+        else if (scheme === 'cardinalText') scheme = 'cardinalText';
+        else if (scheme === 'ordinalText') scheme = 'ordinalText';
+        else if (scheme === 'bullet') scheme = 'bullet';
+        else scheme = 'decimal'; // Default to decimal
+        
+        const numberingText = getNumberingText(counterValue, scheme as NumberingScheme);
+        result = result.replace(placeholder, numberingText);
+      } else {
+        // Fallback if no level definition
+        result = result.replace(placeholder, counterValue.toString());
+      }
+    }
+  }
+  
+  return result;
 }
 
 /**
@@ -715,16 +1000,40 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
   const pPrElement = paragraphElement.querySelector('w\\:pPr, pPr');
   const paragraphProps = extractParagraphProperties(pPrElement);
 
+  // Get effective numbering (direct or style-based)
+  const effectiveNumbering = getEffectiveNumbering(paragraphProps, context.styles);
+  
   // Handle numbering if present
   let numberingPrefix = '';
-  if (paragraphProps.numbering?.numId) {
-    const counter = getOrCreateCounter(context.numbering, paragraphProps.numbering.numId);
-    const level = paragraphProps.numbering.ilvl || 0;
+  if (effectiveNumbering?.numId) {
+    const counter = getOrCreateCounter(context.numbering.counters, effectiveNumbering.numId);
+    const level = effectiveNumbering.ilvl || 0;
     const currentNumber = incrementCounter(counter, level);
     
-    // For now, use decimal numbering as default - future enhancement will read from numbering.xml
-    const numberingText = getNumberingText(currentNumber, 'decimal');
-    numberingPrefix = `<span class="numbering-text">${numberingText}. </span>`;
+    // Try to get numbering definition and apply lvlText template
+    const definition = context.numbering.definitions.get(effectiveNumbering.numId);
+    if (definition) {
+      const levelDef = definition.levels.get(level);
+      if (levelDef) {
+        // Apply the level text template
+        const numberingText = applyLevelText(
+          levelDef.lvlText,
+          counter,
+          level,
+          context.numbering.definitions,
+          effectiveNumbering.numId
+        );
+        numberingPrefix = `<span class="numbering-text">${numberingText} </span>`;
+      } else {
+        // Fallback if no level definition
+        const numberingText = getNumberingText(currentNumber, 'decimal');
+        numberingPrefix = `<span class="numbering-text">${numberingText}. </span>`;
+      }
+    } else {
+      // Fallback to decimal if no definition found
+      const numberingText = getNumberingText(currentNumber, 'decimal');
+      numberingPrefix = `<span class="numbering-text">${numberingText}. </span>`;
+    }
   }
 
   // Transform all runs in the paragraph, including those within tracked change elements
@@ -843,15 +1152,25 @@ function escapeHtml(text: string): string {
 export function transformDocumentToHtml(
   documentXml: Document,
   footnotes: DocumentFootnote[] = [],
-  endnotes: DocumentFootnote[] = []
+  endnotes: DocumentFootnote[] = [],
+  numberingXml?: Document,
+  stylesXml?: Document
 ): TransformedContent {
   // Create note context for footnotes and endnotes
   const noteContext = createNoteContext(footnotes, endnotes);
   
-  // Create transform context with notes and numbering
+  // Parse numbering and style definitions
+  const numberingDefinitions = parseNumberingDefinitions(numberingXml);
+  const styleDefinitions = parseStyleDefinitions(stylesXml);
+  
+  // Create transform context with notes, numbering, and styles
   const context: TransformContext = {
     notes: noteContext,
-    numbering: createNumberingCounters()
+    numbering: {
+      counters: createNumberingCounters(),
+      definitions: numberingDefinitions
+    },
+    styles: styleDefinitions
   };
   
   // Find all paragraph and table elements in the document body
