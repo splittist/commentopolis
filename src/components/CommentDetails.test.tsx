@@ -9,7 +9,8 @@ const mockComment: DocumentComment = {
   author: 'John Doe',
   initial: 'JD',
   date: new Date('2023-12-01T14:30:00Z'),
-  text: 'This is a test comment for the component.',
+  plainText: 'This is a test comment for the component.',
+  content: '<p>This is a test comment for the component.</p>',
   documentId: 'test-doc-1',
   reference: 'Page 1, Paragraph 2',
 };

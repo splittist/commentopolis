@@ -177,7 +177,8 @@ describe('docxParser', () => {
         id: 'doc-1-0',
         author: 'John Doe',
         initial: 'JD',
-        text: 'This is a test comment',
+        plainText: 'This is a test comment',
+        content: '<p>This is a test comment</p>',
         documentId: 'doc-1',
         reference: 'Comment 0'
       });

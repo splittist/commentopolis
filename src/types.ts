@@ -24,7 +24,8 @@ export interface DocumentComment {
   author: string;
   initial?: string;
   date: Date;
-  text: string;
+  plainText: string; // Plain text version for search
+  content: string; // HTML content of the comment
   documentId: string;
   reference?: string; // Reference to the commented text/location
   // Extended comment properties

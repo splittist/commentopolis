@@ -24,14 +24,16 @@ describe('CommentFilters', () => {
       id: 'comment1',
       author: 'John Doe',
       date: new Date('2023-01-01T10:00:00Z'),
-      text: 'Test comment',
+      plainText: 'Test comment',
+      content: '<p>Test comment</p>',
       documentId: 'doc1',
     },
     {
       id: 'comment2',
       author: 'Jane Smith',
       date: new Date('2023-01-02T11:00:00Z'),
-      text: 'Another comment',
+      plainText: 'Another comment',
+      content: '<p>Another comment</p>',
       documentId: 'doc1',
     },
   ];

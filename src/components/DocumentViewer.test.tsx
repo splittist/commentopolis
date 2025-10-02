@@ -88,14 +88,16 @@ describe('DocumentViewer', () => {
           id: 'comment-1',
           author: 'John Doe',
           date: new Date(),
-          text: 'Test comment',
+          plainText: 'Test comment',
+          content: '<p>Test comment</p>',
           documentId: 'test-doc-1'
         },
         {
           id: 'comment-2',
           author: 'Jane Doe',
           date: new Date(),
-          text: 'Another comment',
+          plainText: 'Another comment',
+          content: '<p>Another comment</p>',
           documentId: 'test-doc-1'
         }
       ],
@@ -117,7 +119,8 @@ describe('DocumentViewer', () => {
           id: 'comment-1',
           author: 'John Doe',
           date: new Date(),
-          text: 'Test comment',
+          plainText: 'Test comment',
+          content: '<p>Test comment</p>',
           documentId: 'test-doc-1'
         }
       ],

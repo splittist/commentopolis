@@ -55,7 +55,8 @@ describe('useDocuments', () => {
         author: 'Test Author',
         initial: 'TA',
         date: new Date('2023-01-01'),
-        text: 'Test comment',
+        plainText: 'Test comment',
+        content: '<p>Test comment</p>',
         documentId: 'mock-uuid-123',
         reference: 'Comment 1'
       }],
@@ -90,7 +91,7 @@ describe('useDocuments', () => {
     expect(result.current.comments[0]).toMatchObject({
       id: 'mock-uuid-123-1',
       author: 'Test Author',
-      text: 'Test comment',
+      plainText: 'Test comment',
     });
 
     expect(toast.success).toHaveBeenCalledWith('Document "test.docx" uploaded successfully');
@@ -184,7 +185,8 @@ describe('useDocuments', () => {
         author: 'Test Author',
         initial: 'TA',
         date: new Date('2023-01-01'),
-        text: 'Test comment',
+        plainText: 'Test comment',
+        content: '<p>Test comment</p>',
         documentId: 'mock-uuid-123',
         reference: 'Comment 1'
       }],
