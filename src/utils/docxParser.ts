@@ -406,7 +406,9 @@ export async function parseDocxComments(
       result.transformedContent = transformDocumentToHtml(
         result.documentXml, 
         result.footnotes, 
-        result.endnotes
+        result.endnotes,
+        result.numberingXml,
+        result.stylesXml
       );
     } catch (error) {
       console.warn('Error transforming document to HTML:', error);
