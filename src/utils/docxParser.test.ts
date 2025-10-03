@@ -516,5 +516,54 @@ describe('docxParser', () => {
       expect(result.commentsXml).toBeDefined();
       expect(result.commentsIdsXml).toBeDefined();
     });
+
+    it('extracts paraId from last paragraph in multi-paragraph comments', async () => {
+      const { default: JSZip } = await import('jszip');
+      
+      const mockDocumentXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body><w:p><w:r><w:t>Test document</w:t></w:r></w:p></w:body>
+        </w:document>`;
+      
+      const mockCommentsXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+          <w:comment w:id="0" w:author="John Doe" w:initials="JD" w:date="2023-12-01T10:00:00Z">
+            <w:p w14:paraId="11111111"><w:r><w:t>First paragraph of comment</w:t></w:r></w:p>
+            <w:p w14:paraId="22222222"><w:r><w:t>Second paragraph of comment</w:t></w:r></w:p>
+            <w:p w14:paraId="33333333"><w:r><w:t>Third paragraph of comment</w:t></w:r></w:p>
+          </w:comment>
+        </w:comments>`;
+      
+      const mockZip = {
+        file: vi.fn().mockImplementation((path: string) => {
+          const xmlContent = {
+            'word/document.xml': mockDocumentXml,
+            'word/comments.xml': mockCommentsXml
+          };
+          
+          if (path in xmlContent) {
+            return {
+              async: vi.fn().mockResolvedValue(xmlContent[path as keyof typeof xmlContent])
+            };
+          }
+          return null;
+        })
+      };
+      
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      
+      const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
+      
+      expect(result.comments).toHaveLength(1);
+      
+      const comment = result.comments[0];
+      expect(comment).toBeDefined();
+      expect(comment?.id).toBe('doc-1-0');
+      // Should extract paraId from the LAST paragraph (33333333), not the first (11111111)
+      expect(comment?.paraId).toBe('33333333');
+      expect(comment?.plainText).toContain('First paragraph');
+      expect(comment?.plainText).toContain('Second paragraph');
+      expect(comment?.plainText).toContain('Third paragraph');
+    });
   });
 });
