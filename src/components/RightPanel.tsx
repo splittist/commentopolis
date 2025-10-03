@@ -53,12 +53,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
   const renderNormalContent = () => {
     // If a comment is selected, show comment details
     if (selectedComment) {
+      // Get the document HTML for extracting referenced paragraphs
+      const document = documents.find(d => d.id === selectedComment.documentId);
+      const documentHtml = document?.transformedContent?.html || '';
+      
       return (
         <div className="p-4">
           <CommentDetails 
             comment={selectedComment} 
             getDocumentName={getDocumentName}
             getCommentById={getCommentById}
+            documentHtml={documentHtml}
           />
         </div>
       );
@@ -105,12 +110,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
   const renderFocusedContent = () => {
     // If a comment is selected, show comment details with expanded view
     if (selectedComment) {
+      // Get the document HTML for extracting referenced paragraphs
+      const document = documents.find(d => d.id === selectedComment.documentId);
+      const documentHtml = document?.transformedContent?.html || '';
+      
       return (
         <div className="p-4">
           <CommentDetails 
             comment={selectedComment} 
             getDocumentName={getDocumentName}
             getCommentById={getCommentById}
+            documentHtml={documentHtml}
           />
         </div>
       );

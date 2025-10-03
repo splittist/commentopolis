@@ -1541,11 +1541,14 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
   
   const content = numberingPrefix + runContent;
   
+  // Add paragraph ID as data attribute if available
+  const idAttr = paragraphId ? ` data-para-id="${paragraphId}"` : '';
+  
   if (styles) {
-    return `<p style="${styles}">${content}</p>`;
+    return `<p${idAttr} style="${styles}">${content}</p>`;
   }
   
-  return `<p>${content}</p>`;
+  return `<p${idAttr}>${content}</p>`;
 }
 
 /**

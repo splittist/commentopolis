@@ -1,10 +1,12 @@
 import React from 'react';
 import type { DocumentComment } from '../types';
+import { extractParagraphsById } from '../utils/paragraphExtractor';
 
 interface CommentDetailsProps {
   comment: DocumentComment | null;
   getDocumentName?: (documentId: string) => string;
   getCommentById?: (commentId: string) => DocumentComment | null;
+  documentHtml?: string;
 }
 
 /**
@@ -13,7 +15,8 @@ interface CommentDetailsProps {
 export const CommentDetails: React.FC<CommentDetailsProps> = ({ 
   comment, 
   getDocumentName,
-  getCommentById
+  getCommentById,
+  documentHtml = ''
 }) => {
   // Empty state when no comment is selected
   if (!comment) {
@@ -131,8 +134,18 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
           </div>
         )}
 
-        {/* Referenced Paragraph */}
-        {comment.reference && (
+        {/* Referenced Paragraph(s) */}
+        {comment.paragraphIds && comment.paragraphIds.length > 0 && documentHtml ? (
+          <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+            <div className="text-sm font-medium text-blue-800 mb-2">
+              Referenced Paragraph{comment.paragraphIds.length > 1 ? 's' : ''}
+            </div>
+            <div 
+              className="text-sm text-blue-900 leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: extractParagraphsById(documentHtml, comment.paragraphIds) }}
+            />
+          </div>
+        ) : comment.reference ? (
           <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
             <div className="text-sm font-medium text-blue-800 mb-2">
               Referenced Paragraph
@@ -141,18 +154,7 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
               {comment.reference}
             </div>
           </div>
-        )}
-
-        {/* Comment Text */}
-        <div className="bg-white p-4 rounded-lg border border-gray-200">
-          <div className="text-sm font-medium text-gray-700 mb-2">
-            Comment
-          </div>
-          <div 
-            className="text-gray-800 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: comment.content }}
-          />
-        </div>
+        ) : null}
 
         {/* Metadata */}
         <div className="bg-gray-50 p-3 rounded-lg">
