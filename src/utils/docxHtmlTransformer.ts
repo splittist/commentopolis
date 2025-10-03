@@ -1455,12 +1455,15 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
       const commentRefElement = runElement.querySelector('w\\:commentReference, commentReference');
       if (commentRefElement) {
         const commentId = commentRefElement.getAttribute('w:id') || commentRefElement.getAttribute('id');
-        if (commentId) {
+        if (commentId && context.commentToParagraphMap) {
           // Add this paragraph to the comment's paragraph set
           if (!context.commentToParagraphMap.has(commentId)) {
             context.commentToParagraphMap.set(commentId, new Set());
           }
-          context.commentToParagraphMap.get(commentId)!.add(paragraphId);
+          const paragraphSet = context.commentToParagraphMap.get(commentId);
+          if (paragraphSet) {
+            paragraphSet.add(paragraphId);
+          }
         }
       }
     });
