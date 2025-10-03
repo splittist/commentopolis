@@ -208,11 +208,10 @@ describe('docxParser', () => {
         </w:numbering>`;
       
       const mockCommentsExtendedXml = `<?xml version="1.0" encoding="UTF-8"?>
-        <w:commentsExtended xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-          <w:commentExtended w:id="0">
-            <w:extData>Extended comment data</w:extData>
-          </w:commentExtended>
-        </w:commentsExtended>`;
+        <w15:commentsEx xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml">
+          <w15:commentEx w15:paraId="00000001" w15:paraIdParent="00000000" w15:done="0">
+          </w15:commentEx>
+        </w15:commentsEx>`;
       
       const mockZip = {
         file: vi.fn().mockImplementation((path: string) => {
@@ -406,12 +405,12 @@ describe('docxParser', () => {
         </w:comments>`;
       
       const mockCommentsExtendedXml = `<?xml version="1.0" encoding="UTF-8"?>
-        <w:commentsExtended xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-          <w:commentExtended w:id="1" w:parentCommentId="0">
-          </w:commentExtended>
-          <w:commentExtended w:id="2" w:resolved="1">
-          </w:commentExtended>
-        </w:commentsExtended>`;
+        <w15:commentsEx xmlns:w15="http://schemas.microsoft.com/office/word/2012/wordml">
+          <w15:commentEx w15:paraId="1" w15:paraIdParent="0">
+          </w15:commentEx>
+          <w15:commentEx w15:paraId="2" w15:done="1">
+          </w15:commentEx>
+        </w15:commentsEx>`;
       
       const mockZip = {
         file: vi.fn().mockImplementation((path: string) => {

@@ -127,41 +127,45 @@ function parseCommentsExtendedXml(xmlText: string): Record<string, { done?: bool
   }
   
   try {
-    // Find all commentExtended elements
-    const commentExtendedElements = xmlDoc.querySelectorAll('w\\:commentExtended, commentExtended');
+    // Find all commentEx elements
+    const commentExtendedElements = xmlDoc.querySelectorAll('w15\\:commentEx, commentEx');
     
     commentExtendedElements.forEach(commentExtEl => {
       try {
-        const id = commentExtEl.getAttribute('w:id') || commentExtEl.getAttribute('id');
+        // Try w15 format first (w15:paraId), then fall back to older formats
+        const id = commentExtEl.getAttribute('w15:paraId') || 
+                   commentExtEl.getAttribute('paraId') ||
+                   commentExtEl.getAttribute('w:id') || 
+                   commentExtEl.getAttribute('id');
         if (!id) return;
         
         const data: { done?: boolean; parentId?: string } = {};
         
-        // Check for done status - this is typically in w:done element or w:resolved attribute
-        const doneElement = commentExtEl.querySelector('w\\:done, done');
-        const resolvedAttr = commentExtEl.getAttribute('w:resolved') || commentExtEl.getAttribute('resolved');
+        // Check for done status - w15:done attribute or older w:resolved attribute
+        const doneAttr = commentExtEl.getAttribute('w15:done') || 
+                        commentExtEl.getAttribute('done') ||
+                        commentExtEl.getAttribute('w:resolved') || 
+                        commentExtEl.getAttribute('resolved');
         
-        if (doneElement || resolvedAttr) {
-          const doneValue = doneElement?.getAttribute('w:val') || doneElement?.getAttribute('val') || resolvedAttr;
-          data.done = doneValue === '1' || doneValue === 'true' || doneValue === 'yes';
+        if (doneAttr) {
+          data.done = doneAttr === '1' || doneAttr === 'true' || doneAttr === 'yes';
         }
         
-        // Check for parent comment reference (threading)
-        const parentElement = commentExtEl.querySelector('w\\:parentCommentId, parentCommentId');
-        const parentAttr = commentExtEl.getAttribute('w:parentCommentId') || commentExtEl.getAttribute('parentCommentId');
+        // Check for parent comment reference - w15:paraIdParent or older w:parentCommentId
+        const parentAttr = commentExtEl.getAttribute('w15:paraIdParent') || 
+                          commentExtEl.getAttribute('paraIdParent') ||
+                          commentExtEl.getAttribute('w:parentCommentId') || 
+                          commentExtEl.getAttribute('parentCommentId');
         
-        if (parentElement || parentAttr) {
-          const parentId = parentElement?.getAttribute('w:val') || parentElement?.getAttribute('val') || parentAttr;
-          if (parentId) {
-            data.parentId = parentId;
-          }
+        if (parentAttr) {
+          data.parentId = parentAttr;
         }
         
         if (Object.keys(data).length > 0) {
           extendedData[id] = data;
         }
       } catch (error) {
-        console.warn('Error parsing individual commentExtended:', error);
+        console.warn('Error parsing individual commentEx:', error);
       }
     });
     
