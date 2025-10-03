@@ -16,6 +16,7 @@ import {
 export interface TransformedContent {
   html: string;
   plainText: string;
+  commentToParagraphMap?: Map<string, string[]>; // Maps comment ID to array of paragraph IDs
 }
 
 export interface RunProperties {
@@ -780,6 +781,7 @@ interface TransformContext {
   notes: NoteContext;
   numbering: NumberingContext;
   styles: Map<string, StyleDefinition>;
+  commentToParagraphMap?: Map<string, Set<string>>; // Maps comment ID to set of paragraph IDs
 }
 
 /**
@@ -1434,6 +1436,39 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
   const pPrElement = paragraphElement.querySelector('w\\:pPr, pPr');
   const paragraphProps = extractParagraphProperties(pPrElement);
 
+  // Extract paragraph ID (w14:paraId) if available
+  // Note: w14:paraId is an element inside w:pPr, not an attribute
+  let paragraphId: string | undefined;
+  if (pPrElement) {
+    const paraIdElement = pPrElement.querySelector('w14\\:paraId, w\\:paraId, paraId');
+    if (paraIdElement) {
+      paragraphId = paraIdElement.getAttribute('w14:val') || 
+                    paraIdElement.getAttribute('w:val') ||
+                    paraIdElement.getAttribute('val') || undefined;
+    }
+  }
+
+  // Check for comment references in the paragraph runs
+  if (paragraphId && context.commentToParagraphMap) {
+    const allRunElements = paragraphElement.querySelectorAll('w\\:r, r');
+    allRunElements.forEach(runElement => {
+      const commentRefElement = runElement.querySelector('w\\:commentReference, commentReference');
+      if (commentRefElement) {
+        const commentId = commentRefElement.getAttribute('w:id') || commentRefElement.getAttribute('id');
+        if (commentId && context.commentToParagraphMap) {
+          // Add this paragraph to the comment's paragraph set
+          if (!context.commentToParagraphMap.has(commentId)) {
+            context.commentToParagraphMap.set(commentId, new Set());
+          }
+          const paragraphSet = context.commentToParagraphMap.get(commentId);
+          if (paragraphSet) {
+            paragraphSet.add(paragraphId);
+          }
+        }
+      }
+    });
+  }
+
   // Get effective numbering (direct or style-based)
   const effectiveNumbering = getEffectiveNumbering(paragraphProps, context.styles);
   
@@ -1650,13 +1685,15 @@ export function transformDocumentToHtml(
   const styleDefinitions = parseStyleDefinitions(stylesXml);
   
   // Create transform context with notes, numbering, and styles
+  const commentToParagraphMap = new Map<string, Set<string>>();
   const context: TransformContext = {
     notes: noteContext,
     numbering: {
       counters: createNumberingCounters(),
       definitions: numberingDefinitions
     },
-    styles: styleDefinitions
+    styles: styleDefinitions,
+    commentToParagraphMap
   };
   
   // Find all paragraph and table elements in the document body
@@ -1773,8 +1810,15 @@ export function transformDocumentToHtml(
     .filter(text => text.trim())
     .join('\n');
 
+  // Convert the comment to paragraph map from Set to Array for serialization
+  const commentToParagraphMapArray = new Map<string, string[]>();
+  commentToParagraphMap.forEach((paragraphIdSet, commentId) => {
+    commentToParagraphMapArray.set(commentId, Array.from(paragraphIdSet));
+  });
+
   return {
     html: html || '<p>No content to display.</p>',
-    plainText: plainText || 'No content to display.'
+    plainText: plainText || 'No content to display.',
+    commentToParagraphMap: commentToParagraphMapArray
   };
 }
