@@ -570,8 +570,7 @@ export async function parseDocxComments(
         result.numberingXml,
         result.stylesXml,
         result.footnotesXml,
-        result.endnotesXml,
-        result.commentsXml
+        result.endnotesXml
       );
     } catch (error) {
       console.warn('Error transforming document to HTML:', error);

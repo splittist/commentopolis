@@ -1640,8 +1640,7 @@ export function transformDocumentToHtml(
   numberingXml?: Document,
   stylesXml?: Document,
   footnotesXml?: Document,
-  endnotesXml?: Document,
-  commentsXml?: Document
+  endnotesXml?: Document
 ): TransformedContent {
   // Create note context for footnotes and endnotes
   const noteContext = createNoteContext(footnotes, endnotes);
