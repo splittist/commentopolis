@@ -206,9 +206,10 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                 </div>
 
                 {/* Comment text */}
-                <div className="text-gray-700 leading-relaxed">
-                  {comment.plainText}
-                </div>
+                <div 
+                  className="text-gray-700 leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: comment.content }}
+                />
 
                 {/* Selection indicator */}
                 {selectedCommentId === comment.id && (

@@ -41,10 +41,7 @@ describe('CommentDetails', () => {
     // "JD" appears in both avatar and metadata, so we'll use getAllByText
     expect(screen.getAllByText('JD')).toHaveLength(2);
     
-    // Check comment text
-    expect(screen.getByText('This is a test comment for the component.')).toBeInTheDocument();
-    
-    // Check referenced paragraph
+    // Check referenced paragraph (comment content is no longer displayed in CommentDetails)
     expect(screen.getByText('Referenced Paragraph')).toBeInTheDocument();
     expect(screen.getByText('Page 1, Paragraph 2')).toBeInTheDocument();
     
