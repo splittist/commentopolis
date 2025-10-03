@@ -70,13 +70,13 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
         // Extract content from nested paragraphs and runs
         const paragraphElements = commentEl.querySelectorAll('w\\:p, p');
         
-        // Extract paraId from first paragraph (w14:paraId or w:paraId)
+        // Extract paraId from last paragraph (w14:paraId or w:paraId)
         let paraId: string | undefined;
         if (paragraphElements.length > 0) {
-          const firstPara = paragraphElements[0];
-          const paraIdAttr = firstPara.getAttribute('w14:paraId') || 
-                            firstPara.getAttribute('w:paraId') ||
-                            firstPara.getAttribute('paraId');
+          const lastPara = paragraphElements[paragraphElements.length - 1];
+          const paraIdAttr = lastPara.getAttribute('w14:paraId') || 
+                            lastPara.getAttribute('w:paraId') ||
+                            lastPara.getAttribute('paraId');
           if (paraIdAttr) {
             paraId = paraIdAttr;
           }
