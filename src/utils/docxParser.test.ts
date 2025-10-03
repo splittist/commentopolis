@@ -630,12 +630,12 @@ describe('docxParser', () => {
       const comment0 = result.comments.find(c => c.id === 'doc-1-0');
       expect(comment0).toBeDefined();
       expect(comment0?.paragraphIds).toBeDefined();
-      expect(comment0?.paragraphIds).toEqual(['PARA001']);
+      expect(comment0?.paragraphIds).toEqual([0]); // First paragraph index
       
       const comment1 = result.comments.find(c => c.id === 'doc-1-1');
       expect(comment1).toBeDefined();
       expect(comment1?.paragraphIds).toBeDefined();
-      expect(comment1?.paragraphIds).toEqual(['PARA003']);
+      expect(comment1?.paragraphIds).toEqual([2]); // Third paragraph index
     });
   });
 });

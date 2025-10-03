@@ -1,12 +1,12 @@
 import React from 'react';
 import type { DocumentComment } from '../types';
-import { extractParagraphsById } from '../utils/paragraphExtractor';
+import { extractParagraphsByIndex } from '../utils/paragraphExtractor';
 
 interface CommentDetailsProps {
   comment: DocumentComment | null;
   getDocumentName?: (documentId: string) => string;
   getCommentById?: (commentId: string) => DocumentComment | null;
-  documentHtml?: string;
+  documentParagraphs?: string[]; // Array of paragraph HTML strings
 }
 
 /**
@@ -16,7 +16,7 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
   comment, 
   getDocumentName,
   getCommentById,
-  documentHtml = ''
+  documentParagraphs = []
 }) => {
   // Empty state when no comment is selected
   if (!comment) {
@@ -135,14 +135,14 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
         )}
 
         {/* Referenced Paragraph(s) */}
-        {comment.paragraphIds && comment.paragraphIds.length > 0 && documentHtml ? (
+        {comment.paragraphIds && comment.paragraphIds.length > 0 && documentParagraphs.length > 0 ? (
           <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
             <div className="text-sm font-medium text-blue-800 mb-2">
               Referenced Paragraph{comment.paragraphIds.length > 1 ? 's' : ''}
             </div>
             <div 
               className="text-sm text-blue-900 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: extractParagraphsById(documentHtml, comment.paragraphIds) }}
+              dangerouslySetInnerHTML={{ __html: extractParagraphsByIndex(documentParagraphs, comment.paragraphIds) }}
             />
           </div>
         ) : comment.reference ? (

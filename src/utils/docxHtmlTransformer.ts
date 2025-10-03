@@ -16,7 +16,8 @@ import {
 export interface TransformedContent {
   html: string;
   plainText: string;
-  commentToParagraphMap?: Map<string, string[]>; // Maps comment ID to array of paragraph IDs
+  paragraphs: string[]; // Array of paragraph HTML strings in document order
+  commentToParagraphMap?: Map<string, number[]>; // Maps comment ID to array of paragraph indices
 }
 
 export interface RunProperties {
@@ -781,7 +782,9 @@ interface TransformContext {
   notes: NoteContext;
   numbering: NumberingContext;
   styles: Map<string, StyleDefinition>;
-  commentToParagraphMap?: Map<string, Set<string>>; // Maps comment ID to set of paragraph IDs
+  commentToParagraphMap?: Map<string, Set<number>>; // Maps comment ID to set of paragraph indices
+  wordParaIdToIndex?: Map<string, number>; // Maps Word paragraph ID to array index
+  paragraphs?: string[]; // Array of paragraph HTML strings
 }
 
 /**
@@ -1438,31 +1441,39 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
 
   // Extract paragraph ID (w14:paraId) if available
   // Note: w14:paraId is an element inside w:pPr, not an attribute
-  let paragraphId: string | undefined;
+  let wordParagraphId: string | undefined;
   if (pPrElement) {
     const paraIdElement = pPrElement.querySelector('w14\\:paraId, w\\:paraId, paraId');
     if (paraIdElement) {
-      paragraphId = paraIdElement.getAttribute('w14:val') || 
+      wordParagraphId = paraIdElement.getAttribute('w14:val') || 
                     paraIdElement.getAttribute('w:val') ||
                     paraIdElement.getAttribute('val') || undefined;
     }
   }
 
+  // Get the current paragraph index (if paragraphs array is available)
+  const currentParagraphIndex = context.paragraphs?.length ?? -1;
+  
+  // Store mapping from Word paragraph ID to array index
+  if (wordParagraphId && currentParagraphIndex >= 0 && context.wordParaIdToIndex) {
+    context.wordParaIdToIndex.set(wordParagraphId, currentParagraphIndex);
+  }
+
   // Check for comment references in the paragraph runs
-  if (paragraphId && context.commentToParagraphMap) {
+  if (currentParagraphIndex >= 0 && context.commentToParagraphMap) {
     const allRunElements = paragraphElement.querySelectorAll('w\\:r, r');
     allRunElements.forEach(runElement => {
       const commentRefElement = runElement.querySelector('w\\:commentReference, commentReference');
       if (commentRefElement) {
         const commentId = commentRefElement.getAttribute('w:id') || commentRefElement.getAttribute('id');
-        if (commentId && context.commentToParagraphMap) {
-          // Add this paragraph to the comment's paragraph set
-          if (!context.commentToParagraphMap.has(commentId)) {
-            context.commentToParagraphMap.set(commentId, new Set());
+        if (commentId) {
+          // Add this paragraph index to the comment's paragraph set
+          if (!context.commentToParagraphMap!.has(commentId)) {
+            context.commentToParagraphMap!.set(commentId, new Set());
           }
-          const paragraphSet = context.commentToParagraphMap.get(commentId);
+          const paragraphSet = context.commentToParagraphMap!.get(commentId);
           if (paragraphSet) {
-            paragraphSet.add(paragraphId);
+            paragraphSet.add(currentParagraphIndex);
           }
         }
       }
@@ -1541,14 +1552,12 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
   
   const content = numberingPrefix + runContent;
   
-  // Add paragraph ID as data attribute if available
-  const idAttr = paragraphId ? ` data-para-id="${paragraphId}"` : '';
-  
+  // No longer add data-para-id attribute since we use array indices
   if (styles) {
-    return `<p${idAttr} style="${styles}">${content}</p>`;
+    return `<p style="${styles}">${content}</p>`;
   }
   
-  return `<p${idAttr}>${content}</p>`;
+  return `<p>${content}</p>`;
 }
 
 /**
@@ -1688,7 +1697,9 @@ export function transformDocumentToHtml(
   const styleDefinitions = parseStyleDefinitions(stylesXml);
   
   // Create transform context with notes, numbering, and styles
-  const commentToParagraphMap = new Map<string, Set<string>>();
+  const commentToParagraphMap = new Map<string, Set<number>>();
+  const wordParaIdToIndex = new Map<string, number>();
+  const paragraphs: string[] = [];
   const context: TransformContext = {
     notes: noteContext,
     numbering: {
@@ -1696,7 +1707,9 @@ export function transformDocumentToHtml(
       definitions: numberingDefinitions
     },
     styles: styleDefinitions,
-    commentToParagraphMap
+    commentToParagraphMap,
+    wordParaIdToIndex,
+    paragraphs
   };
   
   // Find all paragraph and table elements in the document body
@@ -1704,7 +1717,8 @@ export function transformDocumentToHtml(
   if (!body) {
     return {
       html: '<p>No document content found.</p>',
-      plainText: 'No document content found.'
+      plainText: 'No document content found.',
+      paragraphs: []
     };
   }
 
@@ -1717,7 +1731,8 @@ export function transformDocumentToHtml(
   if (contentElements.length === 0) {
     return {
       html: '<p>No content found in document.</p>',
-      plainText: 'No content found in document.'
+      plainText: 'No content found in document.',
+      paragraphs: []
     };
   }
 
@@ -1726,7 +1741,12 @@ export function transformDocumentToHtml(
     .map(element => {
       const tagName = element.tagName.toLowerCase();
       if (tagName.match(/^(w:)?p$/)) {
-        return transformParagraph(element, context);
+        const html = transformParagraph(element, context);
+        // Add paragraph to the array (tables are not added to paragraphs array)
+        if (html.trim()) {
+          paragraphs.push(html);
+        }
+        return html;
       } else if (tagName.match(/^(w:)?tbl$/)) {
         return transformTable(element, context);
       }
@@ -1814,14 +1834,15 @@ export function transformDocumentToHtml(
     .join('\n');
 
   // Convert the comment to paragraph map from Set to Array for serialization
-  const commentToParagraphMapArray = new Map<string, string[]>();
-  commentToParagraphMap.forEach((paragraphIdSet, commentId) => {
-    commentToParagraphMapArray.set(commentId, Array.from(paragraphIdSet));
+  const commentToParagraphMapArray = new Map<string, number[]>();
+  commentToParagraphMap.forEach((paragraphIndexSet, commentId) => {
+    commentToParagraphMapArray.set(commentId, Array.from(paragraphIndexSet));
   });
 
   return {
     html: html || '<p>No content to display.</p>',
     plainText: plainText || 'No content to display.',
+    paragraphs,
     commentToParagraphMap: commentToParagraphMapArray
   };
 }

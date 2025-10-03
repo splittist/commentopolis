@@ -55,7 +55,8 @@ describe('DocumentViewer', () => {
     const document = createMockDocument({
       transformedContent: {
         html: '<p>This is <strong>bold</strong> text.</p>',
-        plainText: 'This is bold text.'
+        plainText: 'This is bold text.',
+        paragraphs: []
       }
     });
 
@@ -103,7 +104,8 @@ describe('DocumentViewer', () => {
       ],
       transformedContent: {
         html: '<p>Document content</p>',
-        plainText: 'Document content'
+        plainText: 'Document content',
+        paragraphs: []
       }
     });
 
@@ -126,7 +128,8 @@ describe('DocumentViewer', () => {
       ],
       transformedContent: {
         html: '<p>Document content</p>',
-        plainText: 'Document content'
+        plainText: 'Document content',
+        paragraphs: []
       }
     });
 
@@ -140,7 +143,8 @@ describe('DocumentViewer', () => {
       comments: [],
       transformedContent: {
         html: '<p>Document content</p>',
-        plainText: 'Document content'
+        plainText: 'Document content',
+        paragraphs: []
       }
     });
 
@@ -153,7 +157,8 @@ describe('DocumentViewer', () => {
     const document = createMockDocument({
       transformedContent: {
         html: '<p>Normal text</p><p style="text-align: center"><strong>Bold centered text</strong></p>',
-        plainText: 'Normal text\nBold centered text'
+        plainText: 'Normal text\nBold centered text',
+        paragraphs: []
       }
     });
 
@@ -173,7 +178,8 @@ describe('DocumentViewer', () => {
       size: 2048000, // 2MB
       transformedContent: {
         html: '<p>Large document content</p>',
-        plainText: 'Large document content'
+        plainText: 'Large document content',
+        paragraphs: []
       }
     });
 

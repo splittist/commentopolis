@@ -34,7 +34,7 @@ export interface DocumentComment {
   done?: boolean; // Whether the comment is marked as done
   parentId?: string; // paraId of parent comment for threading
   children?: string[]; // Array of child comment paraIds
-  paragraphIds?: string[]; // Array of paragraph IDs that this comment refers to (from w:commentReference elements)
+  paragraphIds?: number[]; // Array of paragraph indices that this comment refers to (array positions in document order)
 }
 
 // Footnote/Endnote data extracted from .docx files
@@ -74,6 +74,7 @@ export interface UploadedDocument {
   transformedContent?: {
     html: string;
     plainText: string;
+    paragraphs: string[]; // Array of paragraph HTML strings in document order
   };
 }
 
