@@ -565,5 +565,77 @@ describe('docxParser', () => {
       expect(comment?.plainText).toContain('Second paragraph');
       expect(comment?.plainText).toContain('Third paragraph');
     });
+
+    it('maps comments to paragraphs using commentReference elements', async () => {
+      const { default: JSZip } = await import('jszip');
+      
+      const mockDocumentXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+          <w:body>
+            <w:p>
+              <w:pPr><w14:paraId w14:val="PARA001"/></w:pPr>
+              <w:r><w:t>First paragraph with comment</w:t></w:r>
+              <w:commentRangeStart w:id="0"/>
+              <w:r><w:t> highlighted text</w:t></w:r>
+              <w:commentRangeEnd w:id="0"/>
+              <w:r><w:commentReference w:id="0"/></w:r>
+            </w:p>
+            <w:p>
+              <w:pPr><w14:paraId w14:val="PARA002"/></w:pPr>
+              <w:r><w:t>Second paragraph without comment</w:t></w:r>
+            </w:p>
+            <w:p>
+              <w:pPr><w14:paraId w14:val="PARA003"/></w:pPr>
+              <w:r><w:t>Third paragraph with comment</w:t></w:r>
+              <w:commentRangeStart w:id="1"/>
+              <w:r><w:t> highlighted text</w:t></w:r>
+              <w:commentRangeEnd w:id="1"/>
+              <w:r><w:commentReference w:id="1"/></w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const mockCommentsXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+          <w:comment w:id="0" w:author="John Doe" w:initials="JD" w:date="2023-12-01T10:00:00Z">
+            <w:p w14:paraId="11111111"><w:r><w:t>Comment on first paragraph</w:t></w:r></w:p>
+          </w:comment>
+          <w:comment w:id="1" w:author="Jane Smith" w:initials="JS" w:date="2023-12-02T10:00:00Z">
+            <w:p w14:paraId="22222222"><w:r><w:t>Comment on third paragraph</w:t></w:r></w:p>
+          </w:comment>
+        </w:comments>`;
+      
+      const mockZip = {
+        file: vi.fn().mockImplementation((path: string) => {
+          const xmlContent = {
+            'word/document.xml': mockDocumentXml,
+            'word/comments.xml': mockCommentsXml
+          };
+          
+          if (path in xmlContent) {
+            return {
+              async: vi.fn().mockResolvedValue(xmlContent[path as keyof typeof xmlContent])
+            };
+          }
+          return null;
+        })
+      };
+      
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      
+      const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
+      
+      expect(result.comments).toHaveLength(2);
+      
+      const comment0 = result.comments.find(c => c.id === 'doc-1-0');
+      expect(comment0).toBeDefined();
+      expect(comment0?.paragraphIds).toBeDefined();
+      expect(comment0?.paragraphIds).toEqual(['PARA001']);
+      
+      const comment1 = result.comments.find(c => c.id === 'doc-1-1');
+      expect(comment1).toBeDefined();
+      expect(comment1?.paragraphIds).toBeDefined();
+      expect(comment1?.paragraphIds).toEqual(['PARA003']);
+    });
   });
 });

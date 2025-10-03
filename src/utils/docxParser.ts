@@ -572,6 +572,20 @@ export async function parseDocxComments(
         result.footnotesXml,
         result.endnotesXml
       );
+      
+      // Apply comment to paragraph mapping if available
+      if (result.transformedContent.commentToParagraphMap && result.comments.length > 0) {
+        result.comments = result.comments.map(comment => {
+          const commentId = comment.id.split('-').pop() || comment.id;
+          const paragraphIds = result.transformedContent!.commentToParagraphMap!.get(commentId);
+          
+          if (paragraphIds && paragraphIds.length > 0) {
+            return { ...comment, paragraphIds };
+          }
+          
+          return comment;
+        });
+      }
     } catch (error) {
       console.warn('Error transforming document to HTML:', error);
       // Don't fail the entire parse operation if HTML transformation fails

@@ -34,6 +34,7 @@ export interface DocumentComment {
   done?: boolean; // Whether the comment is marked as done
   parentId?: string; // paraId of parent comment for threading
   children?: string[]; // Array of child comment paraIds
+  paragraphIds?: string[]; // Array of paragraph IDs that this comment refers to (from w:commentReference elements)
 }
 
 // Footnote/Endnote data extracted from .docx files
