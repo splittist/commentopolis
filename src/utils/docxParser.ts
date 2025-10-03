@@ -1,6 +1,6 @@
 import JSZip from 'jszip';
 import type { DocumentComment, DocumentFootnote } from '../types';
-import { transformDocumentToHtml, type TransformedContent } from './docxHtmlTransformer';
+import { transformDocumentToHtml, transformNoteContent, type TransformedContent } from './docxHtmlTransformer';
 
 export interface DocxParseResult {
   comments: DocumentComment[];
@@ -82,8 +82,7 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
           }
         }
         
-        // Build HTML content
-        const htmlParts: string[] = [];
+        // Extract plain text (will be replaced with styled content in transformDocumentToHtml)
         const textParts: string[] = [];
         
         paragraphElements.forEach(pEl => {
@@ -97,15 +96,13 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
           }).join('');
           
           if (runContent.trim()) {
-            htmlParts.push(`<p>${runContent.trim()}</p>`);
             textParts.push(runContent.trim());
           }
         });
         
-        const content = htmlParts.join('');
         const plainText = textParts.join(' ');
         
-        if (content && plainText) {
+        if (plainText) {
           comments.push({
             id: `${documentId}-${id}`,
             paraId,
@@ -113,7 +110,7 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
             initial,
             date: dateStr ? new Date(dateStr) : new Date(),
             plainText,
-            content,
+            content: '', // Will be populated with styled content in transformDocumentToHtml
             documentId,
             reference: `Comment ${id}`
           });
@@ -303,11 +300,11 @@ function parseFootnotesEndnotesXml(
           return;
         }
         
-        // Extract content from nested paragraphs and runs
+        // Store the XML element for later transformation
+        // For now, we still extract plain text for backward compatibility
         const paragraphElements = noteEl.querySelectorAll('w\\:p, p');
         
-        // Build HTML content
-        const htmlParts: string[] = [];
+        // Extract plain text (will be replaced with styled content in transformDocumentToHtml)
         const textParts: string[] = [];
         
         paragraphElements.forEach(pEl => {
@@ -321,19 +318,17 @@ function parseFootnotesEndnotesXml(
           }).join('');
           
           if (runContent.trim()) {
-            htmlParts.push(`<p>${runContent.trim()}</p>`);
             textParts.push(runContent.trim());
           }
         });
         
-        const content = htmlParts.join('');
         const plainText = textParts.join(' ');
         
-        if (content && plainText) {
+        if (plainText) {
           notes.push({
             id: `${documentId}-${type}-${id}`,
             type,
-            content,
+            content: '', // Will be populated with styled content in transformDocumentToHtml
             plainText,
             documentId,
             noteType: noteType as 'normal' | 'separator' | 'continuationSeparator'
@@ -461,6 +456,101 @@ export async function parseDocxComments(
       );
     }
     
+    // Transform comment content with proper styling
+    if (result.commentsXml && result.comments.length > 0) {
+      const commentElements = result.commentsXml.querySelectorAll('w\\:comment, comment');
+      const commentMap = new Map<string, Element>();
+      
+      // Build map of comment elements by ID
+      commentElements.forEach(commentEl => {
+        const id = commentEl.getAttribute('w:id') || commentEl.getAttribute('id');
+        if (id) {
+          commentMap.set(id, commentEl);
+        }
+      });
+      
+      // Transform each comment's content
+      result.comments = result.comments.map(comment => {
+        const id = comment.id.split('-').pop() || comment.id;
+        const commentElement = commentMap.get(id);
+        
+        if (commentElement) {
+          const content = transformNoteContent(
+            commentElement,
+            result.numberingXml,
+            result.stylesXml
+          );
+          return { ...comment, content };
+        }
+        
+        return comment;
+      });
+    }
+    
+    // Transform footnote content with proper styling
+    if (result.footnotesXml && result.footnotes.length > 0) {
+      const footnoteElements = result.footnotesXml.querySelectorAll('w\\:footnote, footnote');
+      const footnoteMap = new Map<string, Element>();
+      
+      // Build map of footnote elements by ID
+      footnoteElements.forEach(footnoteEl => {
+        const id = footnoteEl.getAttribute('w:id') || footnoteEl.getAttribute('id');
+        const noteType = footnoteEl.getAttribute('w:type') || footnoteEl.getAttribute('type') || 'normal';
+        if (id && noteType === 'normal') {
+          footnoteMap.set(id, footnoteEl);
+        }
+      });
+      
+      // Transform each footnote's content
+      result.footnotes = result.footnotes.map(footnote => {
+        const id = footnote.id.split('-').pop() || footnote.id;
+        const footnoteElement = footnoteMap.get(id);
+        
+        if (footnoteElement) {
+          const content = transformNoteContent(
+            footnoteElement,
+            result.numberingXml,
+            result.stylesXml
+          );
+          return { ...footnote, content };
+        }
+        
+        return footnote;
+      });
+    }
+    
+    // Transform endnote content with proper styling
+    if (result.endnotesXml && result.endnotes.length > 0) {
+      const endnoteElements = result.endnotesXml.querySelectorAll('w\\:endnote, endnote');
+      const endnoteMap = new Map<string, Element>();
+      
+      // Build map of endnote elements by ID
+      endnoteElements.forEach(endnoteEl => {
+        const id = endnoteEl.getAttribute('w:id') || endnoteEl.getAttribute('id');
+        const noteType = endnoteEl.getAttribute('w:type') || endnoteEl.getAttribute('type') || 'normal';
+        if (id && noteType === 'normal') {
+          endnoteMap.set(id, endnoteEl);
+        }
+      });
+      
+      // Transform each endnote's content
+      result.endnotes = result.endnotes.map(endnote => {
+        const id = endnote.id.split('-').pop() || endnote.id;
+        const endnoteElement = endnoteMap.get(id);
+        
+        if (endnoteElement) {
+          const content = transformNoteContent(
+            endnoteElement,
+            result.numberingXml,
+            result.stylesXml
+          );
+          return { ...endnote, content };
+        }
+        
+        return endnote;
+      });
+    }
+    
     // Check if required document.xml is missing
     if (!result.documentXml) {
       return {
@@ -478,7 +568,9 @@ export async function parseDocxComments(
         result.footnotes, 
         result.endnotes,
         result.numberingXml,
-        result.stylesXml
+        result.stylesXml,
+        result.footnotesXml,
+        result.endnotesXml
       );
     } catch (error) {
       console.warn('Error transforming document to HTML:', error);
