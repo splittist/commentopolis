@@ -392,15 +392,15 @@ describe('docxParser', () => {
         </w:document>`;
       
       const mockCommentsXml = `<?xml version="1.0" encoding="UTF-8"?>
-        <w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
           <w:comment w:id="0" w:author="John Doe" w:initials="JD" w:date="2023-12-01T10:00:00Z">
-            <w:p><w:r><w:t>This is a main comment</w:t></w:r></w:p>
+            <w:p w14:paraId="0"><w:r><w:t>This is a main comment</w:t></w:r></w:p>
           </w:comment>
           <w:comment w:id="1" w:author="Jane Smith" w:initials="JS" w:date="2023-12-01T11:00:00Z">
-            <w:p><w:r><w:t>This is a reply comment</w:t></w:r></w:p>
+            <w:p w14:paraId="1"><w:r><w:t>This is a reply comment</w:t></w:r></w:p>
           </w:comment>
           <w:comment w:id="2" w:author="Bob Johnson" w:initials="BJ" w:date="2023-12-01T12:00:00Z">
-            <w:p><w:r><w:t>This is a done comment</w:t></w:r></w:p>
+            <w:p w14:paraId="2"><w:r><w:t>This is a done comment</w:t></w:r></w:p>
           </w:comment>
         </w:comments>`;
       
@@ -438,26 +438,83 @@ describe('docxParser', () => {
       // Check main comment (no extended data)
       const mainComment = result.comments.find(c => c.id === 'doc-1-0');
       expect(mainComment).toBeDefined();
+      expect(mainComment?.paraId).toBe('0');
       expect(mainComment?.done).toBe(false);
       expect(mainComment?.parentId).toBeUndefined();
-      expect(mainComment?.children).toEqual(['doc-1-1']);
+      expect(mainComment?.children).toEqual(['1']); // Children now stores paraIds
       
       // Check reply comment (has parent)
       const replyComment = result.comments.find(c => c.id === 'doc-1-1');
       expect(replyComment).toBeDefined();
+      expect(replyComment?.paraId).toBe('1');
       expect(replyComment?.done).toBe(false);
-      expect(replyComment?.parentId).toBe('doc-1-0');
+      expect(replyComment?.parentId).toBe('0'); // parentId now stores parent's paraId
       expect(replyComment?.children).toEqual([]);
       
       // Check done comment (marked as resolved)
       const doneComment = result.comments.find(c => c.id === 'doc-1-2');
       expect(doneComment).toBeDefined();
+      expect(doneComment?.paraId).toBe('2');
       expect(doneComment?.done).toBe(true);
       expect(doneComment?.parentId).toBeUndefined();
       expect(doneComment?.children).toEqual([]);
       
       expect(result.commentsXml).toBeDefined();
       expect(result.commentsExtendedXml).toBeDefined();
+    });
+
+    it('parses commentsIds.xml and extracts durable IDs', async () => {
+      const { default: JSZip } = await import('jszip');
+      
+      const mockDocumentXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body><w:p><w:r><w:t>Test document</w:t></w:r></w:p></w:body>
+        </w:document>`;
+      
+      const mockCommentsXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml">
+          <w:comment w:id="0" w:author="John Doe" w:initials="JD" w:date="2023-12-01T10:00:00Z">
+            <w:p w14:paraId="12345678"><w:r><w:t>This is a comment with durable ID</w:t></w:r></w:p>
+          </w:comment>
+        </w:comments>`;
+      
+      const mockCommentsIdsXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w16cid:commentsIds xmlns:w16cid="http://schemas.microsoft.com/office/word/2016/wordml/cid">
+          <w16cid:commentId w16cid:paraId="12345678" w16cid:durableId="{ABCD1234-5678-90AB-CDEF-1234567890AB}">
+          </w16cid:commentId>
+        </w16cid:commentsIds>`;
+      
+      const mockZip = {
+        file: vi.fn().mockImplementation((path: string) => {
+          const xmlContent = {
+            'word/document.xml': mockDocumentXml,
+            'word/comments.xml': mockCommentsXml,
+            'word/commentsIds.xml': mockCommentsIdsXml
+          };
+          
+          if (path in xmlContent) {
+            return {
+              async: vi.fn().mockResolvedValue(xmlContent[path as keyof typeof xmlContent])
+            };
+          }
+          return null;
+        })
+      };
+      
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      
+      const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
+      
+      expect(result.comments).toHaveLength(1);
+      
+      const comment = result.comments[0];
+      expect(comment).toBeDefined();
+      expect(comment?.id).toBe('doc-1-0');
+      expect(comment?.paraId).toBe('12345678');
+      expect(comment?.durableId).toBe('{ABCD1234-5678-90AB-CDEF-1234567890AB}');
+      
+      expect(result.commentsXml).toBeDefined();
+      expect(result.commentsIdsXml).toBeDefined();
     });
   });
 });

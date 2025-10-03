@@ -13,10 +13,12 @@ export interface DocxParseResult {
   numberingXml?: Document;
   commentsXml?: Document;
   commentsExtendedXml?: Document;
+  commentsIdsXml?: Document;
   footnotesXml?: Document;
   endnotesXml?: Document;
   // Extended comment data for processing
   extendedData?: Record<string, { done?: boolean; parentId?: string }>;
+  durableIds?: Record<string, string>;
   // Transformed HTML content
   transformedContent?: TransformedContent;
 }
@@ -68,6 +70,18 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
         // Extract content from nested paragraphs and runs
         const paragraphElements = commentEl.querySelectorAll('w\\:p, p');
         
+        // Extract paraId from first paragraph (w14:paraId or w:paraId)
+        let paraId: string | undefined;
+        if (paragraphElements.length > 0) {
+          const firstPara = paragraphElements[0];
+          const paraIdAttr = firstPara.getAttribute('w14:paraId') || 
+                            firstPara.getAttribute('w:paraId') ||
+                            firstPara.getAttribute('paraId');
+          if (paraIdAttr) {
+            paraId = paraIdAttr;
+          }
+        }
+        
         // Build HTML content
         const htmlParts: string[] = [];
         const textParts: string[] = [];
@@ -94,6 +108,7 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
         if (content && plainText) {
           comments.push({
             id: `${documentId}-${id}`,
+            paraId,
             author,
             initial,
             date: dateStr ? new Date(dateStr) : new Date(),
@@ -113,6 +128,46 @@ function parseCommentsXml(xmlText: string, documentId: string): DocumentComment[
   }
   
   return comments;
+}
+
+/**
+ * Parse commentsIds.xml to extract durable IDs
+ */
+function parseCommentsIdsXml(xmlText: string): Record<string, string> {
+  const durableIds: Record<string, string> = {};
+  
+  const xmlDoc = parseXmlToDom(xmlText, 'commentsIds.xml');
+  if (!xmlDoc) {
+    return durableIds;
+  }
+  
+  try {
+    // Find all commentId elements
+    const commentIdElements = xmlDoc.querySelectorAll('w16cid\\:commentId, commentId');
+    
+    commentIdElements.forEach(commentIdEl => {
+      try {
+        // Get paraId (maps to w14:paraId from comments.xml)
+        const paraId = commentIdEl.getAttribute('w16cid:paraId') || 
+                      commentIdEl.getAttribute('paraId');
+        
+        // Get durableId
+        const durableId = commentIdEl.getAttribute('w16cid:durableId') || 
+                         commentIdEl.getAttribute('durableId');
+        
+        if (paraId && durableId) {
+          durableIds[paraId] = durableId;
+        }
+      } catch (error) {
+        console.warn('Error parsing individual commentId:', error);
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error parsing commentsIds XML:', error);
+  }
+  
+  return durableIds;
 }
 
 /**
@@ -182,35 +237,40 @@ function parseCommentsExtendedXml(xmlText: string): Record<string, { done?: bool
 function enhanceCommentsWithExtendedData(
   comments: DocumentComment[], 
   extendedData: Record<string, { done?: boolean; parentId?: string }>,
-  documentId: string
+  durableIds: Record<string, string>
 ): DocumentComment[] {
-  // Create a map for quick lookups
+  // Create a map for quick lookups by paraId
   const commentMap = new Map<string, DocumentComment>();
   
   // First pass: apply extended data and build comment map
   const enhancedComments = comments.map(comment => {
-    // Extract the original comment ID (remove document ID prefix)
-    const originalId = comment.id.replace(`${documentId}-`, '');
-    const extended = extendedData[originalId];
+    // Match extended data using paraId (from w14:paraId in comments.xml)
+    // which corresponds to w15:paraId in commentsExtended.xml
+    const extended = comment.paraId ? extendedData[comment.paraId] : undefined;
+    const durableId = comment.paraId ? durableIds[comment.paraId] : undefined;
     
     const enhanced = {
       ...comment,
+      durableId,
       done: extended?.done || false,
-      parentId: extended?.parentId ? `${documentId}-${extended.parentId}` : undefined,
+      parentId: extended?.parentId, // This is the parent's paraId
       children: [] as string[]
     };
     
-    commentMap.set(enhanced.id, enhanced);
+    // Store in map by paraId for parent/child linking
+    if (enhanced.paraId) {
+      commentMap.set(enhanced.paraId, enhanced);
+    }
     return enhanced;
   });
   
   // Second pass: build children arrays for threading
   enhancedComments.forEach(comment => {
-    if (comment.parentId) {
+    if (comment.parentId && comment.paraId) {
       const parent = commentMap.get(comment.parentId);
       if (parent) {
         parent.children = parent.children || [];
-        parent.children.push(comment.id);
+        parent.children.push(comment.paraId);
       }
     }
   });
@@ -312,6 +372,7 @@ export async function parseDocxComments(
       numbering: 'word/numbering.xml',
       comments: 'word/comments.xml',
       commentsExtended: 'word/commentsExtended.xml',
+      commentsIds: 'word/commentsIds.xml',
       footnotes: 'word/footnotes.xml',
       endnotes: 'word/endnotes.xml'
     };
@@ -366,6 +427,11 @@ export async function parseDocxComments(
               // Store extended data for later enhancement
               result.extendedData = parseCommentsExtendedXml(content);
               break;
+            case 'commentsIds':
+              result.commentsIdsXml = xmlDoc;
+              // Store durable IDs for later enhancement
+              result.durableIds = parseCommentsIdsXml(content);
+              break;
             case 'footnotes':
               result.footnotesXml = xmlDoc;
               // Parse footnotes
@@ -386,12 +452,12 @@ export async function parseDocxComments(
       }
     });
     
-    // Enhance comments with extended data if available
-    if (result.extendedData && result.comments.length > 0) {
+    // Enhance comments with extended data and/or durable IDs if available
+    if ((result.extendedData || result.durableIds) && result.comments.length > 0) {
       result.comments = enhanceCommentsWithExtendedData(
         result.comments, 
-        result.extendedData, 
-        documentId
+        result.extendedData || {},
+        result.durableIds || {}
       );
     }
     

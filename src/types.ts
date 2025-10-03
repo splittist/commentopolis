@@ -20,7 +20,9 @@ export interface PanelStateManager {
 
 // Comment data extracted from .docx files
 export interface DocumentComment {
-  id: string;
+  id: string; // From w:id in comments.xml - used to link comment with text in document.xml
+  paraId?: string; // From w14:paraId in first paragraph of comment - used for threading and done status
+  durableId?: string; // From w16cid:durableId in commentsIds.xml - for future use
   author: string;
   initial?: string;
   date: Date;
@@ -30,8 +32,8 @@ export interface DocumentComment {
   reference?: string; // Reference to the commented text/location
   // Extended comment properties
   done?: boolean; // Whether the comment is marked as done
-  parentId?: string; // ID of parent comment for threading
-  children?: string[]; // Array of child comment IDs
+  parentId?: string; // paraId of parent comment for threading
+  children?: string[]; // Array of child comment paraIds
 }
 
 // Footnote/Endnote data extracted from .docx files

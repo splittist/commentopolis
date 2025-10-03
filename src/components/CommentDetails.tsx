@@ -160,6 +160,16 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
             <div>
               <span className="font-medium">Comment ID:</span> {comment.id}
             </div>
+            {comment.paraId && (
+              <div>
+                <span className="font-medium">Para ID:</span> {comment.paraId}
+              </div>
+            )}
+            {comment.durableId && (
+              <div>
+                <span className="font-medium">Durable ID:</span> {comment.durableId}
+              </div>
+            )}
             {comment.initial && (
               <div>
                 <span className="font-medium">Initials:</span> {comment.initial}
