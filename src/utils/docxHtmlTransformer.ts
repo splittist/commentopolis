@@ -491,9 +491,16 @@ export function twipsToPixels(twips: number): number {
 
 /**
  * Apply paragraph properties to create inline CSS styles
- * Merges direct properties with style-based properties
+ * Merges properties in OOXML inheritance order:
+ * 1. Paragraph style properties (from styles.xml)
+ * 2. Numbering style properties (from numbering.xml level definitions)
+ * 3. Direct paragraph properties
  */
-function createParagraphStyles(props: ParagraphProperties, context?: TransformContext): string {
+function createParagraphStyles(
+  props: ParagraphProperties, 
+  context?: TransformContext,
+  effectiveNumbering?: { numId?: string; ilvl?: number }
+): string {
   const styles: string[] = [];
   
   // Get style-based properties if pStyle is present
@@ -501,30 +508,78 @@ function createParagraphStyles(props: ParagraphProperties, context?: TransformCo
   if (props.pStyle && context?.styles) {
     styleProps = getStyleParagraphProps(props.pStyle, context.styles);
   }
+  
+  // Get numbering-based properties if numbering is present
+  let numberingProps: LevelDefinition['paragraphProps'] | undefined;
+  if (effectiveNumbering && context?.numbering.definitions) {
+    numberingProps = getNumberingParagraphProps(effectiveNumbering, context.numbering.definitions);
+  }
 
-  // Apply alignment (direct properties override style properties)
-  const alignment = props.alignment || styleProps?.alignment;
+  // Apply alignment with correct inheritance order:
+  // style < numbering < direct
+  const alignment = props.alignment || numberingProps?.alignment || styleProps?.alignment;
   if (alignment) {
     styles.push(`text-align: ${alignment}`);
   }
 
-  // Apply indentation (direct properties override style properties)
-  const indentation = props.indentation || styleProps?.indentation;
-  if (indentation) {
-    if (indentation.left) {
-      const leftPx = twipsToPixels(indentation.left);
-      styles.push(`margin-left: ${leftPx}px`);
+  // Apply indentation with correct inheritance order:
+  // style < numbering < direct
+  // Need to merge indentation properties individually
+  const indentation: ParagraphProperties['indentation'] = {};
+  
+  // Start with style properties
+  if (styleProps?.indentation) {
+    if (styleProps.indentation.left !== undefined) {
+      indentation.left = styleProps.indentation.left;
     }
-    
-    if (indentation.right) {
-      const rightPx = twipsToPixels(indentation.right);
-      styles.push(`margin-right: ${rightPx}px`);
+    if (styleProps.indentation.right !== undefined) {
+      indentation.right = styleProps.indentation.right;
     }
-    
-    if (indentation.firstLine) {
-      const firstLinePx = twipsToPixels(indentation.firstLine);
-      styles.push(`text-indent: ${firstLinePx}px`);
+    if (styleProps.indentation.firstLine !== undefined) {
+      indentation.firstLine = styleProps.indentation.firstLine;
     }
+  }
+  
+  // Override with numbering properties
+  if (numberingProps?.indentation) {
+    if (numberingProps.indentation.left !== undefined) {
+      indentation.left = numberingProps.indentation.left;
+    }
+    if (numberingProps.indentation.right !== undefined) {
+      indentation.right = numberingProps.indentation.right;
+    }
+    if (numberingProps.indentation.firstLine !== undefined) {
+      indentation.firstLine = numberingProps.indentation.firstLine;
+    }
+  }
+  
+  // Override with direct properties
+  if (props.indentation) {
+    if (props.indentation.left !== undefined) {
+      indentation.left = props.indentation.left;
+    }
+    if (props.indentation.right !== undefined) {
+      indentation.right = props.indentation.right;
+    }
+    if (props.indentation.firstLine !== undefined) {
+      indentation.firstLine = props.indentation.firstLine;
+    }
+  }
+  
+  // Apply the merged indentation
+  if (indentation.left !== undefined) {
+    const leftPx = twipsToPixels(indentation.left);
+    styles.push(`margin-left: ${leftPx}px`);
+  }
+  
+  if (indentation.right !== undefined) {
+    const rightPx = twipsToPixels(indentation.right);
+    styles.push(`margin-right: ${rightPx}px`);
+  }
+  
+  if (indentation.firstLine !== undefined) {
+    const firstLinePx = twipsToPixels(indentation.firstLine);
+    styles.push(`text-indent: ${firstLinePx}px`);
   }
 
   return styles.join('; ');
@@ -654,6 +709,14 @@ interface LevelDefinition {
   numFmt: string;
   lvlText: string;
   start?: number;
+  paragraphProps?: {
+    alignment?: 'left' | 'center' | 'right' | 'justify';
+    indentation?: {
+      left?: number;
+      right?: number;
+      firstLine?: number;
+    };
+  };
 }
 
 /**
@@ -759,11 +822,66 @@ function parseNumberingDefinitions(numberingXml?: Document): Map<string, Numberi
         const lvlText = lvlTextEl?.getAttribute('w:val') || lvlTextEl?.getAttribute('val') || '%1';
         const start = startEl?.getAttribute('w:val') || startEl?.getAttribute('val');
         
-        levels.set(level, {
+        const levelDef: LevelDefinition = {
           numFmt,
           lvlText,
           start: start ? parseInt(start) : undefined
-        });
+        };
+        
+        // Extract paragraph properties from level definition
+        const pPrEl = lvlEl.querySelector('w\\:pPr, pPr');
+        if (pPrEl) {
+          levelDef.paragraphProps = {};
+          
+          // Alignment
+          const jcEl = pPrEl.querySelector('w\\:jc, jc');
+          if (jcEl) {
+            const val = jcEl.getAttribute('w:val') || jcEl.getAttribute('val');
+            if (val) {
+              switch (val) {
+                case 'center':
+                  levelDef.paragraphProps.alignment = 'center';
+                  break;
+                case 'right':
+                  levelDef.paragraphProps.alignment = 'right';
+                  break;
+                case 'both':
+                  levelDef.paragraphProps.alignment = 'justify';
+                  break;
+                default:
+                  levelDef.paragraphProps.alignment = 'left';
+              }
+            }
+          }
+          
+          // Indentation
+          const indEl = pPrEl.querySelector('w\\:ind, ind');
+          if (indEl) {
+            levelDef.paragraphProps.indentation = {};
+            
+            const left = indEl.getAttribute('w:left') || indEl.getAttribute('left');
+            if (left) {
+              levelDef.paragraphProps.indentation.left = parseInt(left);
+            }
+            
+            const right = indEl.getAttribute('w:right') || indEl.getAttribute('right');
+            if (right) {
+              levelDef.paragraphProps.indentation.right = parseInt(right);
+            }
+            
+            const firstLine = indEl.getAttribute('w:firstLine') || indEl.getAttribute('firstLine');
+            if (firstLine) {
+              levelDef.paragraphProps.indentation.firstLine = parseInt(firstLine);
+            }
+          }
+          
+          // Remove paragraphProps if empty
+          if (!levelDef.paragraphProps.alignment && !levelDef.paragraphProps.indentation) {
+            delete levelDef.paragraphProps;
+          }
+        }
+        
+        levels.set(level, levelDef);
       });
       
       abstractNums.set(abstractNumId, levels);
@@ -1000,6 +1118,29 @@ function getStyleParagraphProps(
 }
 
 /**
+ * Get numbering-based paragraph properties for a paragraph
+ * Returns properties from the numbering level definition if applicable
+ */
+function getNumberingParagraphProps(
+  effectiveNumbering: { numId?: string; ilvl?: number } | undefined,
+  numberingDefinitions: Map<string, NumberingDefinition>
+): LevelDefinition['paragraphProps'] | undefined {
+  if (!effectiveNumbering?.numId) {
+    return undefined;
+  }
+  
+  const definition = numberingDefinitions.get(effectiveNumbering.numId);
+  if (!definition) {
+    return undefined;
+  }
+  
+  const level = effectiveNumbering.ilvl || 0;
+  const levelDef = definition.levels.get(level);
+  
+  return levelDef?.paragraphProps;
+}
+
+/**
  * Get effective numbering properties for a paragraph
  * Direct numbering takes priority over style-based numbering
  */
@@ -1184,7 +1325,7 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
   }
 
   // Apply paragraph styling
-  const styles = createParagraphStyles(paragraphProps, context);
+  const styles = createParagraphStyles(paragraphProps, context, effectiveNumbering);
   
   const content = numberingPrefix + runContent;
   
