@@ -26,9 +26,15 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
     return doc?.name || 'Unknown Document';
   };
 
-  // Helper function to get comment by ID
-  const getCommentById = (commentId: string) => {
-    return comments.find(comment => comment.id === commentId) || null;
+  // Helper function to get comment by ID or paraId
+  const getCommentById = (idOrParaId: string) => {
+    // First try to find by regular ID
+    let comment = comments.find(comment => comment.id === idOrParaId);
+    if (comment) return comment;
+    
+    // If not found, try to find by paraId
+    comment = comments.find(comment => comment.paraId === idOrParaId);
+    return comment || null;
   };
   const renderMinimizedContent = () => (
     <div className="flex flex-col items-center space-y-4 p-2">

@@ -25,6 +25,7 @@ const sampleDocuments: UploadedDocument[] = [
 const sampleComments: DocumentComment[] = [
   {
     id: 'demo-comment1',
+    paraId: 'demo-para1', // Add paraId for consistency
     author: 'Sarah Johnson',
     initial: 'SJ',
     date: new Date('2023-12-01T14:30:00Z'),
@@ -33,10 +34,11 @@ const sampleComments: DocumentComment[] = [
     documentId: 'demo-doc1',
     reference: 'Page 2, Paragraph 3',
     done: false,
-    children: ['demo-comment6'], // Has a reply
+    children: ['demo-para6'], // Use paraId for children
   },
   {
     id: 'demo-comment2',
+    paraId: 'demo-para2',
     author: 'Michael Chen',
     initial: 'MC',
     date: new Date('2023-12-01T15:45:00Z'),
@@ -49,6 +51,7 @@ const sampleComments: DocumentComment[] = [
   },
   {
     id: 'demo-comment3',
+    paraId: 'demo-para3',
     author: 'Emily Rodriguez',
     initial: 'ER',
     date: new Date('2023-12-02T09:15:00Z'),
@@ -57,10 +60,11 @@ const sampleComments: DocumentComment[] = [
     documentId: 'demo-doc2',
     reference: 'Section 4.2',
     done: false,
-    children: ['demo-comment7'], // Has a reply
+    children: ['demo-para7'], // Use paraId for children
   },
   {
     id: 'demo-comment4',
+    paraId: 'demo-para4',
     author: 'David Kim',
     initial: 'DK',
     date: new Date('2023-12-02T11:20:00Z'),
@@ -73,6 +77,7 @@ const sampleComments: DocumentComment[] = [
   },
   {
     id: 'demo-comment5',
+    paraId: 'demo-para5',
     author: 'Lisa Wang',
     initial: 'LW',
     date: new Date('2023-12-03T16:10:00Z'),
@@ -85,6 +90,7 @@ const sampleComments: DocumentComment[] = [
   },
   {
     id: 'demo-comment6',
+    paraId: 'demo-para6',
     author: 'Michael Chen',
     initial: 'MC',
     date: new Date('2023-12-01T16:00:00Z'),
@@ -92,12 +98,13 @@ const sampleComments: DocumentComment[] = [
     content: '<p>Good point Sarah. I\'ve reviewed the latest market data and agree we should be more conservative. Let me update the projections.</p>',
     documentId: 'demo-doc1',
     reference: 'Page 2, Paragraph 3',
-    parentId: 'demo-comment1', // Reply to Sarah's comment
+    parentId: 'demo-para1', // Use paraId for parent reference
     done: false,
     children: [],
   },
   {
     id: 'demo-comment7',
+    paraId: 'demo-para7',
     author: 'David Kim',
     initial: 'DK',
     date: new Date('2023-12-02T10:30:00Z'),
@@ -105,7 +112,7 @@ const sampleComments: DocumentComment[] = [
     content: '<p>I can help with the compatibility testing. Let\'s schedule a technical review meeting.</p>',
     documentId: 'demo-doc2',
     reference: 'Section 4.2',
-    parentId: 'demo-comment3', // Reply to Emily's comment
+    parentId: 'demo-para3', // Use paraId for parent reference
     done: true, // This reply is done
     children: [],
   },
