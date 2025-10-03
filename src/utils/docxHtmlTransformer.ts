@@ -1597,6 +1597,40 @@ function escapeHtml(text: string): string {
 }
 
 /**
+ * Transform footnote/endnote/comment content with separate numbering context
+ * Each note/comment gets its own numbering counters that don't carry over
+ * This is exported so it can be used from docxParser.ts
+ */
+export function transformNoteContent(
+  noteElement: Element,
+  numberingXml: Document | undefined,
+  stylesXml: Document | undefined
+): string {
+  // Parse numbering and style definitions (same as document)
+  const numberingDefinitions = parseNumberingDefinitions(numberingXml);
+  const styleDefinitions = parseStyleDefinitions(stylesXml);
+  
+  // Create a fresh context with separate numbering counters
+  const context: TransformContext = {
+    notes: { footnotes: new Map(), endnotes: new Map() }, // Empty note context (no nested notes)
+    numbering: {
+      counters: createNumberingCounters(), // Fresh counters for this note
+      definitions: numberingDefinitions
+    },
+    styles: styleDefinitions
+  };
+  
+  // Transform all paragraph elements in the note
+  const paragraphElements = noteElement.querySelectorAll('w\\:p, p');
+  
+  const htmlParts = Array.from(paragraphElements)
+    .map(p => transformParagraph(p, context))
+    .filter(html => html.trim());
+  
+  return htmlParts.join('\n');
+}
+
+/**
  * Transform Word document XML to HTML
  */
 export function transformDocumentToHtml(
@@ -1604,7 +1638,10 @@ export function transformDocumentToHtml(
   footnotes: DocumentFootnote[] = [],
   endnotes: DocumentFootnote[] = [],
   numberingXml?: Document,
-  stylesXml?: Document
+  stylesXml?: Document,
+  footnotesXml?: Document,
+  endnotesXml?: Document,
+  commentsXml?: Document
 ): TransformedContent {
   // Create note context for footnotes and endnotes
   const noteContext = createNoteContext(footnotes, endnotes);
@@ -1666,8 +1703,20 @@ export function transformDocumentToHtml(
       .filter(note => note.noteType === 'normal') // Only show normal footnotes, not separators
       .map(note => {
         const id = note.id.split('-').pop() || note.id;
+        // Use pre-transformed content if available, otherwise fall back to plain text or transform now
+        let content = note.content;
+        if (!content && footnotesXml) {
+          const footnoteElement = footnotesXml.querySelector(`[w\\:id="${id}"], [id="${id}"]`);
+          if (footnoteElement) {
+            content = transformNoteContent(footnoteElement, numberingXml, stylesXml);
+          }
+        }
+        if (!content) {
+          content = `<p>${note.plainText}</p>`;
+        }
+        
         return `<div class="footnote" id="footnote-${id}">
-          <a href="#footnote-ref-${id}" class="footnote-backlink">${id}.</a> ${note.content}
+          <a href="#footnote-ref-${id}" class="footnote-backlink">${id}.</a> ${content}
         </div>`;
       })
       .join('\n');
@@ -1683,8 +1732,20 @@ export function transformDocumentToHtml(
       .filter(note => note.noteType === 'normal') // Only show normal endnotes, not separators
       .map(note => {
         const id = note.id.split('-').pop() || note.id;
+        // Use pre-transformed content if available, otherwise fall back to plain text or transform now
+        let content = note.content;
+        if (!content && endnotesXml) {
+          const endnoteElement = endnotesXml.querySelector(`[w\\:id="${id}"], [id="${id}"]`);
+          if (endnoteElement) {
+            content = transformNoteContent(endnoteElement, numberingXml, stylesXml);
+          }
+        }
+        if (!content) {
+          content = `<p>${note.plainText}</p>`;
+        }
+        
         return `<div class="endnote" id="endnote-${id}">
-          <a href="#endnote-ref-${id}" class="endnote-backlink">${id}.</a> ${note.content}
+          <a href="#endnote-ref-${id}" class="endnote-backlink">${id}.</a> ${content}
         </div>`;
       })
       .join('\n');
