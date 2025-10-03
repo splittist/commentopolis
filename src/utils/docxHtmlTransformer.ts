@@ -1399,6 +1399,34 @@ function transformRun(
 }
 
 /**
+ * Get paragraph-level run properties for numbering
+ * These are the run properties that should apply to the numbering text
+ * Includes: 1. Paragraph style run properties, 2. Paragraph direct run properties
+ * Does NOT include: run-level properties or character styles
+ */
+function getNumberingRunProperties(
+  paragraphProps: ParagraphProperties,
+  context: TransformContext
+): RunProperties {
+  let mergedRunProps: RunProperties = {};
+  
+  // Step 1: Get run properties from paragraph style
+  if (paragraphProps.pStyle && context.styles) {
+    const styleRunProps = getStyleRunProperties(paragraphProps.pStyle, context.styles);
+    if (styleRunProps) {
+      mergedRunProps = mergeRunProperties(mergedRunProps, styleRunProps);
+    }
+  }
+  
+  // Step 2: Get run properties from paragraph direct properties
+  if (paragraphProps.runProperties) {
+    mergedRunProps = mergeRunProperties(mergedRunProps, paragraphProps.runProperties);
+  }
+  
+  return mergedRunProps;
+}
+
+/**
  * Transform a Word paragraph element to HTML
  */
 function transformParagraph(paragraphElement: Element, context: TransformContext): string {
@@ -1416,6 +1444,10 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
     const level = effectiveNumbering.ilvl || 0;
     const currentNumber = incrementCounter(counter, level);
     
+    // Get run properties for numbering (paragraph-level only)
+    const numberingRunProps = getNumberingRunProperties(paragraphProps, context);
+    const numberingStyles = createRunStyles(numberingRunProps);
+    
     // Try to get numbering definition and apply lvlText template
     const definition = context.numbering.definitions.get(effectiveNumbering.numId);
     if (definition) {
@@ -1429,16 +1461,28 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
           context.numbering.definitions,
           effectiveNumbering.numId
         );
-        numberingPrefix = `<span class="numbering-text">${numberingText} </span>`;
+        if (numberingStyles) {
+          numberingPrefix = `<span class="numbering-text" style="${numberingStyles}">${numberingText} </span>`;
+        } else {
+          numberingPrefix = `<span class="numbering-text">${numberingText} </span>`;
+        }
       } else {
         // Fallback if no level definition
         const numberingText = getNumberingText(currentNumber, 'decimal');
-        numberingPrefix = `<span class="numbering-text">${numberingText}. </span>`;
+        if (numberingStyles) {
+          numberingPrefix = `<span class="numbering-text" style="${numberingStyles}">${numberingText}. </span>`;
+        } else {
+          numberingPrefix = `<span class="numbering-text">${numberingText}. </span>`;
+        }
       }
     } else {
       // Fallback to decimal if no definition found
       const numberingText = getNumberingText(currentNumber, 'decimal');
-      numberingPrefix = `<span class="numbering-text">${numberingText}. </span>`;
+      if (numberingStyles) {
+        numberingPrefix = `<span class="numbering-text" style="${numberingStyles}">${numberingText}. </span>`;
+      } else {
+        numberingPrefix = `<span class="numbering-text">${numberingText}. </span>`;
+      }
     }
   }
 
