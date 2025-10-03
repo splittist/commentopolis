@@ -31,6 +31,7 @@ export interface RunProperties {
   allCaps?: boolean;
   smallCaps?: boolean;
   verticalAlign?: 'superscript' | 'subscript';
+  rStyle?: string; // Character style reference
   // Tracked changes properties
   revision?: {
     type: 'insertion' | 'deletion' | 'moveFrom' | 'moveTo';
@@ -57,6 +58,7 @@ export interface ParagraphProperties {
     ilvl?: number;
   };
   pStyle?: string; // Paragraph style reference
+  runProperties?: RunProperties; // Run properties at paragraph level
 }
 
 export interface TableProperties {
@@ -89,6 +91,15 @@ function extractRunProperties(rPrElement: Element | null): RunProperties {
   const props: RunProperties = {};
   
   if (!rPrElement) return props;
+
+  // Character style reference
+  const rStyleElement = rPrElement.querySelector('w\\:rStyle, rStyle');
+  if (rStyleElement) {
+    const styleId = rStyleElement.getAttribute('w:val') || rStyleElement.getAttribute('val');
+    if (styleId) {
+      props.rStyle = styleId;
+    }
+  }
 
   // Bold
   if (rPrElement.querySelector('w\\:b, b')) {
@@ -263,6 +274,12 @@ function extractParagraphProperties(pPrElement: Element | null): ParagraphProper
         props.numbering.ilvl = parseInt(ilvl);
       }
     }
+  }
+
+  // Run properties at paragraph level (for character formatting inheritance)
+  const rPrElement = pPrElement.querySelector('w\\:rPr, rPr');
+  if (rPrElement) {
+    props.runProperties = extractRunProperties(rPrElement);
   }
 
   return props;
@@ -737,6 +754,7 @@ interface StyleDefinition {
       firstLine?: number;
     };
   };
+  runProperties?: RunProperties; // Run properties in paragraph or character styles
 }
 
 /**
@@ -1008,6 +1026,18 @@ function parseStyleDefinitions(stylesXml?: Document): Map<string, StyleDefinitio
         if (!styleDef.paragraphProps.alignment && !styleDef.paragraphProps.indentation) {
           delete styleDef.paragraphProps;
         }
+
+        // Extract run properties from paragraph properties (for character formatting)
+        const rPrInPPrEl = pPrEl.querySelector('w\\:rPr, rPr');
+        if (rPrInPPrEl) {
+          styleDef.runProperties = extractRunProperties(rPrInPPrEl);
+        }
+      }
+
+      // Extract run properties from character styles (rPr directly under style)
+      const rPrEl = styleEl.querySelector('w\\:rPr, rPr');
+      if (rPrEl && !styleDef.runProperties) {
+        styleDef.runProperties = extractRunProperties(rPrEl);
       }
       
       styles.set(styleId, styleDef);
@@ -1118,6 +1148,73 @@ function getStyleParagraphProps(
 }
 
 /**
+ * Walk up the style basedOn hierarchy to find run properties
+ * Detects circular references to avoid infinite loops
+ */
+function getStyleRunProperties(
+  styleId: string,
+  styles: Map<string, StyleDefinition>,
+  visited = new Set<string>()
+): RunProperties | undefined {
+  // Detect circular reference
+  if (visited.has(styleId)) {
+    return undefined;
+  }
+  
+  visited.add(styleId);
+  
+  const style = styles.get(styleId);
+  if (!style) {
+    return undefined;
+  }
+  
+  // Build properties by walking up the hierarchy
+  let props: RunProperties = {};
+  
+  // First get parent properties if basedOn exists
+  if (style.basedOn) {
+    const parentProps = getStyleRunProperties(style.basedOn, styles, visited);
+    if (parentProps) {
+      props = { ...parentProps };
+    }
+  }
+  
+  // Then override with current style run properties
+  if (style.runProperties) {
+    // Merge run properties, with current style taking precedence
+    props = mergeRunProperties(props, style.runProperties);
+  }
+  
+  return Object.keys(props).length > 0 ? props : undefined;
+}
+
+/**
+ * Merge run properties with precedence to the second argument
+ * Handles special case where boolean false values should override true values
+ */
+function mergeRunProperties(base: RunProperties, override: RunProperties): RunProperties {
+  const merged: RunProperties = { ...base };
+  
+  // For each property in override, copy it to merged
+  if (override.bold !== undefined) merged.bold = override.bold;
+  if (override.italic !== undefined) merged.italic = override.italic;
+  if (override.underline !== undefined) merged.underline = override.underline;
+  if (override.fontSize !== undefined) merged.fontSize = override.fontSize;
+  if (override.color !== undefined) merged.color = override.color;
+  if (override.fontFamily !== undefined) merged.fontFamily = override.fontFamily;
+  if (override.highlight !== undefined) merged.highlight = override.highlight;
+  if (override.strikethrough !== undefined) merged.strikethrough = override.strikethrough;
+  if (override.doubleStrikethrough !== undefined) merged.doubleStrikethrough = override.doubleStrikethrough;
+  if (override.allCaps !== undefined) merged.allCaps = override.allCaps;
+  if (override.smallCaps !== undefined) merged.smallCaps = override.smallCaps;
+  if (override.verticalAlign !== undefined) merged.verticalAlign = override.verticalAlign;
+  if (override.rStyle !== undefined) merged.rStyle = override.rStyle;
+  if (override.revision !== undefined) merged.revision = override.revision;
+  
+  return merged;
+}
+
+/**
  * Get numbering-based paragraph properties for a paragraph
  * Returns properties from the numbering level definition if applicable
  */
@@ -1215,17 +1312,53 @@ function applyLevelText(
 /**
  * Transform a Word run element to HTML
  */
-function transformRun(runElement: Element, context: TransformContext): string {
+function transformRun(
+  runElement: Element, 
+  context: TransformContext,
+  paragraphProps?: ParagraphProperties
+): string {
   // Check if this run is inside a tracked change element
   const revisionInfo = extractRevisionInfo(runElement);
   
-  // Get run properties
+  // Get run properties directly from the run
   const rPrElement = runElement.querySelector('w\\:rPr, rPr');
-  const runProps = extractRunProperties(rPrElement);
+  const directRunProps = extractRunProperties(rPrElement);
+  
+  // Build the complete run properties through inheritance chain:
+  // 1. Paragraph style run properties (from styles.xml)
+  // 2. Paragraph direct run properties (from pPr/rPr)
+  // 3. Character style run properties (from rStyle reference)
+  // 4. Direct run properties (from r/rPr)
+  
+  let mergedRunProps: RunProperties = {};
+  
+  // Step 1: Get run properties from paragraph style
+  if (paragraphProps?.pStyle && context?.styles) {
+    const styleRunProps = getStyleRunProperties(paragraphProps.pStyle, context.styles);
+    if (styleRunProps) {
+      mergedRunProps = mergeRunProperties(mergedRunProps, styleRunProps);
+    }
+  }
+  
+  // Step 2: Get run properties from paragraph direct properties
+  if (paragraphProps?.runProperties) {
+    mergedRunProps = mergeRunProperties(mergedRunProps, paragraphProps.runProperties);
+  }
+  
+  // Step 3: Get run properties from character style (rStyle)
+  if (directRunProps.rStyle && context?.styles) {
+    const charStyleRunProps = getStyleRunProperties(directRunProps.rStyle, context.styles);
+    if (charStyleRunProps) {
+      mergedRunProps = mergeRunProperties(mergedRunProps, charStyleRunProps);
+    }
+  }
+  
+  // Step 4: Apply direct run properties (highest precedence)
+  mergedRunProps = mergeRunProperties(mergedRunProps, directRunProps);
   
   // Apply revision info to run properties
   if (revisionInfo) {
-    runProps.revision = revisionInfo;
+    mergedRunProps.revision = revisionInfo;
   }
 
   // Check for footnote/endnote references
@@ -1256,7 +1389,7 @@ function transformRun(runElement: Element, context: TransformContext): string {
   }
 
   // Apply formatting
-  const styles = createRunStyles(runProps);
+  const styles = createRunStyles(mergedRunProps);
   
   if (styles) {
     return `<span style="${styles}">${escapeHtml(text)}</span>`;
@@ -1316,7 +1449,7 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
   // which checks parent elements for revision information
 
   const runContent = Array.from(allRunElements)
-    .map(run => transformRun(run, context))
+    .map(run => transformRun(run, context, paragraphProps))
     .filter(content => content.trim())
     .join('');
 
