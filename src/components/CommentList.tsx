@@ -78,6 +78,31 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
     setSelectedComment(commentId === selectedCommentId ? null : commentId);
   };
 
+  // Get comment by ID or paraId
+  const getCommentById = (idOrParaId: string): DocumentComment | null => {
+    // First try to find by regular ID
+    let comment = sortedComments.find(c => c.id === idOrParaId);
+    if (comment) return comment;
+    
+    // Try to find by paraId
+    comment = sortedComments.find(c => c.paraId === idOrParaId);
+    return comment || null;
+  };
+
+  // Navigate to a specific comment
+  const navigateToComment = (commentId: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent triggering parent click
+    setSelectedComment(commentId);
+    
+    // Scroll to the comment
+    setTimeout(() => {
+      const element = document.getElementById(`comment-${commentId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
+  };
+
   // Group comments by document if showing multiple documents
   const groupedComments = useMemo(() => {
     // If we have selected documents or activeDocumentId, group appropriately
@@ -160,65 +185,128 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
             )}
             
             {/* Comments for this document */}
-            {docComments.map((comment) => (
-              <div
-                key={comment.id}
-                onClick={() => handleCommentClick(comment.id)}
-                className={`bg-white p-4 rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
-                  selectedCommentId === comment.id
-                    ? 'border-blue-500 ring-2 ring-blue-200 shadow-md'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                {/* Comment header */}
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                      {comment.initial || comment.author.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
+            {docComments.map((comment) => {
+              const parentComment = comment.parentId ? getCommentById(comment.parentId) : null;
+              const isReply = !!comment.parentId;
+              
+              return (
+                <div
+                  key={comment.id}
+                  id={`comment-${comment.id}`}
+                  onClick={() => handleCommentClick(comment.id)}
+                  className={`bg-white rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
+                    isReply ? 'ml-8 border-l-4 border-l-purple-300' : ''
+                  } ${
+                    selectedCommentId === comment.id
+                      ? 'border-blue-500 ring-2 ring-blue-200 shadow-md'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="p-4">
+                    {/* Comment header */}
+                    <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center space-x-2">
-                        <span className="font-medium text-gray-800">{comment.author}</span>
-                        {comment.done && (
-                          <span className="px-1.5 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">
-                            ✓ Done
-                          </span>
-                        )}
-                        {comment.parentId && (
-                          <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 text-xs font-medium rounded">
-                            ↳ Reply
-                          </span>
-                        )}
-                        {comment.children && comment.children.length > 0 && (
-                          <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">
-                            {comment.children.length} replies
-                          </span>
-                        )}
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                          {comment.initial || comment.author.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-medium text-gray-800">{comment.author}</span>
+                            {comment.done && (
+                              <span className="px-1.5 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">
+                                ✓ Done
+                              </span>
+                            )}
+                            {comment.parentId && (
+                              <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 text-xs font-medium rounded">
+                                ↳ Reply
+                              </span>
+                            )}
+                            {comment.children && comment.children.length > 0 && (
+                              <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                                {comment.children.length} {comment.children.length === 1 ? 'reply' : 'replies'}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500">{formatDate(comment.date)}</div>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500">{formatDate(comment.date)}</div>
+                      {comment.reference && (
+                        <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                          {comment.reference}
+                        </span>
+                      )}
                     </div>
+
+                    {/* Thread navigation - Parent comment */}
+                    {parentComment && (
+                      <div className="mb-2 p-2 bg-purple-50 rounded border-l-2 border-purple-400">
+                        <div className="text-xs text-purple-700 mb-1">
+                          <span className="font-medium">Replying to:</span>
+                        </div>
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium text-purple-800">{parentComment.author}</div>
+                            <div className="text-xs text-purple-600 truncate">{parentComment.plainText.slice(0, 80)}{parentComment.plainText.length > 80 ? '...' : ''}</div>
+                          </div>
+                          <button
+                            onClick={(e) => navigateToComment(parentComment.id, e)}
+                            className="ml-2 px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors flex-shrink-0"
+                            title="Go to parent comment"
+                          >
+                            ↑ View
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Comment text */}
+                    <div 
+                      className="text-gray-700 leading-relaxed mb-2"
+                      dangerouslySetInnerHTML={{ __html: comment.content }}
+                    />
+
+                    {/* Thread navigation - Child comments */}
+                    {comment.children && comment.children.length > 0 && (
+                      <div className="mt-3 p-2 bg-blue-50 rounded border-l-2 border-blue-400">
+                        <div className="text-xs font-medium text-blue-700 mb-2">
+                          {comment.children.length} {comment.children.length === 1 ? 'Reply' : 'Replies'}:
+                        </div>
+                        <div className="space-y-2">
+                          {comment.children.map((childId) => {
+                            const child = getCommentById(childId);
+                            if (!child) return null;
+                            
+                            return (
+                              <div key={childId} className="flex items-start justify-between bg-white p-2 rounded">
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-xs font-medium text-gray-800">{child.author}</div>
+                                  <div className="text-xs text-gray-600 truncate">{child.plainText.slice(0, 80)}{child.plainText.length > 80 ? '...' : ''}</div>
+                                </div>
+                                <button
+                                  onClick={(e) => navigateToComment(child.id, e)}
+                                  className="ml-2 px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex-shrink-0"
+                                  title="Go to reply"
+                                >
+                                  ↓ View
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Selection indicator */}
+                    {selectedCommentId === comment.id && (
+                      <div className="mt-2 text-xs text-blue-600 font-medium">
+                        ✓ Selected for review
+                      </div>
+                    )}
                   </div>
-                  {comment.reference && (
-                    <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                      {comment.reference}
-                    </span>
-                  )}
                 </div>
-
-                {/* Comment text */}
-                <div 
-                  className="text-gray-700 leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: comment.content }}
-                />
-
-                {/* Selection indicator */}
-                {selectedCommentId === comment.id && (
-                  <div className="mt-2 text-xs text-blue-600 font-medium">
-                    ✓ Selected for review
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ))}
       </div>
