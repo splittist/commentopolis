@@ -323,4 +323,185 @@ describe('CommentList', () => {
     expect(screen.getByText('No comments found')).toBeInTheDocument();
     expect(screen.getByText('No comments were found in the selected document(s)')).toBeInTheDocument();
   });
+
+  it('should display threaded comments with visual indentation', () => {
+    const threadedComments: DocumentComment[] = [
+      {
+        id: 'parent1',
+        paraId: 'para1',
+        author: 'Alice',
+        initial: 'A',
+        date: new Date('2023-01-01T10:00:00Z'),
+        plainText: 'Parent comment',
+        content: '<p>Parent comment</p>',
+        documentId: 'doc1',
+        reference: 'Page 1',
+        children: ['para2'],
+      },
+      {
+        id: 'reply1',
+        paraId: 'para2',
+        author: 'Bob',
+        initial: 'B',
+        date: new Date('2023-01-01T11:00:00Z'),
+        plainText: 'Reply to parent',
+        content: '<p>Reply to parent</p>',
+        documentId: 'doc1',
+        reference: 'Page 1',
+        parentId: 'para1',
+      },
+    ];
+
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1'],
+      comments: threadedComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
+    render(<CommentList />, { wrapper: TestWrapper });
+
+    // Check for threading indicators
+    expect(screen.getByText('↳ Reply')).toBeInTheDocument();
+    expect(screen.getByText('1 reply')).toBeInTheDocument();
+    expect(screen.getByText('Replying to:')).toBeInTheDocument();
+  });
+
+  it('should show navigation buttons for threaded comments', () => {
+    const threadedComments: DocumentComment[] = [
+      {
+        id: 'parent1',
+        paraId: 'para1',
+        author: 'Alice',
+        initial: 'A',
+        date: new Date('2023-01-01T10:00:00Z'),
+        plainText: 'Parent comment',
+        content: '<p>Parent comment</p>',
+        documentId: 'doc1',
+        reference: 'Page 1',
+        children: ['para2'],
+      },
+      {
+        id: 'reply1',
+        paraId: 'para2',
+        author: 'Bob',
+        initial: 'B',
+        date: new Date('2023-01-01T11:00:00Z'),
+        plainText: 'Reply to parent',
+        content: '<p>Reply to parent</p>',
+        documentId: 'doc1',
+        reference: 'Page 1',
+        parentId: 'para1',
+      },
+    ];
+
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1'],
+      comments: threadedComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
+    render(<CommentList />, { wrapper: TestWrapper });
+
+    // Check for navigation buttons
+    const viewButtons = screen.getAllByRole('button', { name: /View/ });
+    expect(viewButtons.length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: '↑ View' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '↓ View' })).toBeInTheDocument();
+  });
+
+  it('should navigate to parent comment when clicking parent navigation button', () => {
+    const threadedComments: DocumentComment[] = [
+      {
+        id: 'parent1',
+        paraId: 'para1',
+        author: 'Alice',
+        initial: 'A',
+        date: new Date('2023-01-01T10:00:00Z'),
+        plainText: 'Parent comment',
+        content: '<p>Parent comment</p>',
+        documentId: 'doc1',
+        reference: 'Page 1',
+        children: ['para2'],
+      },
+      {
+        id: 'reply1',
+        paraId: 'para2',
+        author: 'Bob',
+        initial: 'B',
+        date: new Date('2023-01-01T11:00:00Z'),
+        plainText: 'Reply to parent',
+        content: '<p>Reply to parent</p>',
+        documentId: 'doc1',
+        reference: 'Page 1',
+        parentId: 'para1',
+      },
+    ];
+
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1'],
+      comments: threadedComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
+    render(<CommentList />, { wrapper: TestWrapper });
+
+    const parentNavButton = screen.getByRole('button', { name: '↑ View' });
+    fireEvent.click(parentNavButton);
+
+    expect(mockSetSelectedComment).toHaveBeenCalledWith('parent1');
+  });
+
+  it('should navigate to child comment when clicking child navigation button', () => {
+    const threadedComments: DocumentComment[] = [
+      {
+        id: 'parent1',
+        paraId: 'para1',
+        author: 'Alice',
+        initial: 'A',
+        date: new Date('2023-01-01T10:00:00Z'),
+        plainText: 'Parent comment',
+        content: '<p>Parent comment</p>',
+        documentId: 'doc1',
+        reference: 'Page 1',
+        children: ['para2'],
+      },
+      {
+        id: 'reply1',
+        paraId: 'para2',
+        author: 'Bob',
+        initial: 'B',
+        date: new Date('2023-01-01T11:00:00Z'),
+        plainText: 'Reply to parent',
+        content: '<p>Reply to parent</p>',
+        documentId: 'doc1',
+        reference: 'Page 1',
+        parentId: 'para1',
+      },
+    ];
+
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1'],
+      comments: threadedComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
+    render(<CommentList />, { wrapper: TestWrapper });
+
+    const childNavButton = screen.getByRole('button', { name: '↓ View' });
+    fireEvent.click(childNavButton);
+
+    expect(mockSetSelectedComment).toHaveBeenCalledWith('reply1');
+  });
 });
