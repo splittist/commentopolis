@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { transformDocumentToHtml, type CommentRangeInfo } from './docxHtmlTransformer';
+import { transformDocumentToHtml } from './docxHtmlTransformer';
 import { extractAndHighlightParagraphs } from './commentHighlighting';
 
 describe('Comment Range Highlighting Integration', () => {
