@@ -92,9 +92,6 @@ function applyHighlightingToParagraph(
     // Create a wrapper element for the highlight
     const wrapper = document.createElement('mark');
     wrapper.className = 'comment-highlight';
-    wrapper.style.backgroundColor = 'rgba(255, 235, 59, 0.3)'; // Subtle yellow highlight
-    wrapper.style.borderRadius = '2px';
-    wrapper.style.padding = '0';
 
     // Insert the wrapper before the first span to highlight
     const firstSpan = spansToHighlight[0];
