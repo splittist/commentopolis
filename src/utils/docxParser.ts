@@ -591,7 +591,8 @@ export async function parseDocxComments(
       // Don't fail the entire parse operation if HTML transformation fails
       result.transformedContent = {
         html: '<p>Error transforming document content to HTML.</p>',
-        plainText: 'Error transforming document content to HTML.'
+        plainText: 'Error transforming document content to HTML.',
+        paragraphs: []
       };
     }
     

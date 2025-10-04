@@ -53,9 +53,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
   const renderNormalContent = () => {
     // If a comment is selected, show comment details
     if (selectedComment) {
-      // Get the document HTML for extracting referenced paragraphs
+      // Get the document paragraphs array for extracting referenced paragraphs
       const document = documents.find(d => d.id === selectedComment.documentId);
-      const documentHtml = document?.transformedContent?.html || '';
+      const documentParagraphs = document?.transformedContent?.paragraphs || [];
       
       return (
         <div className="p-4">
@@ -63,7 +63,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
             comment={selectedComment} 
             getDocumentName={getDocumentName}
             getCommentById={getCommentById}
-            documentHtml={documentHtml}
+            documentParagraphs={documentParagraphs}
           />
         </div>
       );
@@ -110,9 +110,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
   const renderFocusedContent = () => {
     // If a comment is selected, show comment details with expanded view
     if (selectedComment) {
-      // Get the document HTML for extracting referenced paragraphs
+      // Get the document paragraphs array for extracting referenced paragraphs
       const document = documents.find(d => d.id === selectedComment.documentId);
-      const documentHtml = document?.transformedContent?.html || '';
+      const documentParagraphs = document?.transformedContent?.paragraphs || [];
       
       return (
         <div className="p-4">
@@ -120,7 +120,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
             comment={selectedComment} 
             getDocumentName={getDocumentName}
             getCommentById={getCommentById}
-            documentHtml={documentHtml}
+            documentParagraphs={documentParagraphs}
           />
         </div>
       );
