@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DocumentComment } from '../types';
 import { extractParagraphsByIndex } from '../utils/paragraphExtractor';
+import { extractAndHighlightParagraphs } from '../utils/commentHighlighting';
 
 interface CommentDetailsProps {
   comment: DocumentComment | null;
@@ -142,7 +143,11 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
             </div>
             <div 
               className="text-sm text-blue-900 leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: extractParagraphsByIndex(documentParagraphs, comment.paragraphIds) }}
+              dangerouslySetInnerHTML={{ 
+                __html: comment.ranges && comment.ranges.length > 0
+                  ? extractAndHighlightParagraphs(documentParagraphs, comment.paragraphIds, comment.ranges)
+                  : extractParagraphsByIndex(documentParagraphs, comment.paragraphIds)
+              }}
             />
           </div>
         ) : comment.reference ? (

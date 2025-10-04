@@ -637,5 +637,93 @@ describe('docxParser', () => {
       expect(comment1?.paragraphIds).toBeDefined();
       expect(comment1?.paragraphIds).toEqual([2]); // Third paragraph index
     });
+
+    it('parses comment ranges from commentRangeStart and commentRangeEnd markers', async () => {
+      const { default: JSZip } = await import('jszip');
+      
+      const mockDocumentXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:commentRangeStart w:id="0"/>
+              <w:r><w:t>First span</w:t></w:r>
+              <w:r><w:t>Second span</w:t></w:r>
+              <w:commentRangeEnd w:id="0"/>
+              <w:r>
+                <w:commentReference w:id="0"/>
+                <w:t>Comment marker</w:t>
+              </w:r>
+            </w:p>
+            <w:p>
+              <w:r><w:t>Another paragraph</w:t></w:r>
+            </w:p>
+            <w:p>
+              <w:commentRangeStart w:id="1"/>
+              <w:r><w:t>Para3 Span1</w:t></w:r>
+              <w:r><w:t>Para3 Span2</w:t></w:r>
+              <w:r><w:t>Para3 Span3</w:t></w:r>
+              <w:commentRangeEnd w:id="1"/>
+              <w:r>
+                <w:commentReference w:id="1"/>
+                <w:t>Comment 2</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const mockCommentsXml = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:comments xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:comment w:id="0" w:author="John Doe" w:date="2023-01-01T10:00:00Z">
+            <w:p><w:r><w:t>Comment on first two spans</w:t></w:r></w:p>
+          </w:comment>
+          <w:comment w:id="1" w:author="Jane Smith" w:date="2023-01-01T11:00:00Z">
+            <w:p><w:r><w:t>Comment on three spans in para 3</w:t></w:r></w:p>
+          </w:comment>
+        </w:comments>`;
+      
+      const mockZip = {
+        file: vi.fn().mockImplementation((path: string) => {
+          const xmlContent = {
+            'word/document.xml': mockDocumentXml,
+            'word/comments.xml': mockCommentsXml
+          };
+          
+          if (path in xmlContent) {
+            return {
+              async: vi.fn().mockResolvedValue(xmlContent[path as keyof typeof xmlContent])
+            };
+          }
+          return null;
+        })
+      };
+      
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      
+      const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
+      
+      expect(result.comments).toHaveLength(2);
+      
+      // Check first comment has ranges
+      const comment0 = result.comments.find(c => c.id === 'doc-1-0');
+      expect(comment0).toBeDefined();
+      expect(comment0?.ranges).toBeDefined();
+      expect(comment0?.ranges).toHaveLength(1);
+      expect(comment0?.ranges?.[0]).toMatchObject({
+        paragraphIndex: 0,
+        startSpanIndex: 0,
+        endSpanIndex: 2 // Spans at indices 0 and 1
+      });
+      
+      // Check second comment has ranges
+      const comment1 = result.comments.find(c => c.id === 'doc-1-1');
+      expect(comment1).toBeDefined();
+      expect(comment1?.ranges).toBeDefined();
+      expect(comment1?.ranges).toHaveLength(1);
+      expect(comment1?.ranges?.[0]).toMatchObject({
+        paragraphIndex: 2, // Third paragraph
+        startSpanIndex: 0,
+        endSpanIndex: 3 // All three spans
+      });
+    });
   });
 });
