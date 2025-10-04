@@ -18,6 +18,13 @@ export interface PanelStateManager {
   toggleRightPanel: () => void;
 }
 
+// Comment range specification for highlighting
+export interface CommentRange {
+  paragraphIndex: number; // Index of paragraph in document order
+  startSpanIndex: number; // Zero-based index of first span to highlight (inclusive)
+  endSpanIndex: number; // Zero-based index of last span to highlight (exclusive)
+}
+
 // Comment data extracted from .docx files
 export interface DocumentComment {
   id: string; // From w:id in comments.xml - used to link comment with text in document.xml
@@ -35,6 +42,7 @@ export interface DocumentComment {
   parentId?: string; // paraId of parent comment for threading
   children?: string[]; // Array of child comment paraIds
   paragraphIds?: number[]; // Array of paragraph indices that this comment refers to (array positions in document order)
+  ranges?: CommentRange[]; // Array of ranges specifying exact spans to highlight
 }
 
 // Footnote/Endnote data extracted from .docx files

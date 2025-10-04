@@ -578,12 +578,24 @@ export async function parseDocxComments(
         result.comments = result.comments.map(comment => {
           const commentId = comment.id.split('-').pop() || comment.id;
           const paragraphIds = result.transformedContent!.commentToParagraphMap!.get(commentId);
+          const rangeInfos = result.transformedContent!.commentRanges?.get(commentId);
+          
+          const updatedComment = { ...comment };
           
           if (paragraphIds && paragraphIds.length > 0) {
-            return { ...comment, paragraphIds };
+            updatedComment.paragraphIds = paragraphIds;
           }
           
-          return comment;
+          // Convert CommentRangeInfo to CommentRange for the comment
+          if (rangeInfos && rangeInfos.length > 0) {
+            updatedComment.ranges = rangeInfos.map(info => ({
+              paragraphIndex: info.paragraphIndex,
+              startSpanIndex: info.startSpanIndex,
+              endSpanIndex: info.endSpanIndex
+            }));
+          }
+          
+          return updatedComment;
         });
       }
     } catch (error) {
