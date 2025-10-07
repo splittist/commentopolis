@@ -786,6 +786,17 @@ export interface CommentRangeInfo {
 }
 
 /**
+ * Global comment range tracking for multi-paragraph ranges
+ */
+interface CommentRangeTracker {
+  commentId: string;
+  startParagraphIndex: number;
+  startSpanIndex: number;
+  endParagraphIndex?: number;
+  endSpanIndex?: number;
+}
+
+/**
  * Transform context including notes, numbering, and styles
  */
 interface TransformContext {
@@ -796,6 +807,7 @@ interface TransformContext {
   wordParaIdToIndex?: Map<string, number>; // Maps Word paragraph ID to array index
   paragraphs?: string[]; // Array of paragraph HTML strings
   commentRanges?: Map<string, CommentRangeInfo[]>; // Maps comment ID to array of range info
+  globalCommentRanges?: Map<string, CommentRangeTracker>; // Global tracking for multi-paragraph ranges
 }
 
 /**
@@ -1411,7 +1423,7 @@ function transformRun(
     return `<span style="${styles}">${escapeHtml(text)}</span>`;
   }
   
-  return escapeHtml(text);
+  return `<span>${escapeHtml(text)}</span>`; // Wrap in span for highlighting DEBUG
 }
 
 /**
@@ -1470,107 +1482,9 @@ function transformParagraph(paragraphElement: Element, context: TransformContext
     context.wordParaIdToIndex.set(wordParagraphId, currentParagraphIndex);
   }
 
-  // Track comment range markers
-  // Maps commentId -> { start: spanIndex | null, end: spanIndex | null }
-  const commentRangeMarkers = new Map<string, { start: number | null; end: number | null }>();
-  
-  // Scan all children to find commentRangeStart and commentRangeEnd markers
-  Array.from(paragraphElement.children).forEach((child) => {
-    const tagName = child.tagName.toLowerCase();
-    
-    if (tagName.match(/^(w:)?commentrangestart$/)) {
-      const commentId = child.getAttribute('w:id') || child.getAttribute('id');
-      if (commentId) {
-        if (!commentRangeMarkers.has(commentId)) {
-          commentRangeMarkers.set(commentId, { start: null, end: null });
-        }
-        // We'll set the actual span index after we count the runs
-        const marker = commentRangeMarkers.get(commentId)!;
-        marker.start = -1; // Placeholder, will be set to actual index
-      }
-    } else if (tagName.match(/^(w:)?commentrangeend$/)) {
-      const commentId = child.getAttribute('w:id') || child.getAttribute('id');
-      if (commentId) {
-        if (!commentRangeMarkers.has(commentId)) {
-          commentRangeMarkers.set(commentId, { start: null, end: null });
-        }
-        const marker = commentRangeMarkers.get(commentId)!;
-        marker.end = -1; // Placeholder, will be set to actual index
-      }
-    }
-  });
-
-  // Now we need to find the exact span indices by tracking runs before/after markers
-  let spanIndex = 0;
-  const commentRangeSpanIndices = new Map<string, { start: number | null; end: number | null }>();
-  
-  // Initialize with nulls
-  commentRangeMarkers.forEach((_, commentId) => {
-    commentRangeSpanIndices.set(commentId, { start: null, end: null });
-  });
-
-  // Iterate through children to track when we encounter markers vs runs
-  Array.from(paragraphElement.children).forEach((child) => {
-    const tagName = child.tagName.toLowerCase();
-    
-    if (tagName.match(/^(w:)?commentrangestart$/)) {
-      const commentId = child.getAttribute('w:id') || child.getAttribute('id');
-      if (commentId) {
-        const spanIndices = commentRangeSpanIndices.get(commentId);
-        if (spanIndices) {
-          spanIndices.start = spanIndex; // Start at current span index
-        }
-      }
-    } else if (tagName.match(/^(w:)?commentrangeend$/)) {
-      const commentId = child.getAttribute('w:id') || child.getAttribute('id');
-      if (commentId) {
-        const spanIndices = commentRangeSpanIndices.get(commentId);
-        if (spanIndices) {
-          spanIndices.end = spanIndex; // End at current span index (exclusive)
-        }
-      }
-    } else if (tagName.match(/^(w:)?r$/)) {
-      // This is a run element, increment span counter
-      spanIndex++;
-    }
-  });
-
-  // Store comment range info in context
-  if (currentParagraphIndex >= 0 && context.commentRanges) {
-    commentRangeSpanIndices.forEach((indices, commentId) => {
-      if (indices.start !== null && indices.end !== null) {
-        if (!context.commentRanges!.has(commentId)) {
-          context.commentRanges!.set(commentId, []);
-        }
-        context.commentRanges!.get(commentId)!.push({
-          paragraphIndex: currentParagraphIndex,
-          startSpanIndex: indices.start,
-          endSpanIndex: indices.end
-        });
-      }
-    });
-  }
-
-  // Check for comment references in the paragraph runs
-  if (currentParagraphIndex >= 0 && context.commentToParagraphMap) {
-    const allRunElements = paragraphElement.querySelectorAll('w\\:r, r');
-    allRunElements.forEach(runElement => {
-      const commentRefElement = runElement.querySelector('w\\:commentReference, commentReference');
-      if (commentRefElement) {
-        const commentId = commentRefElement.getAttribute('w:id') || commentRefElement.getAttribute('id');
-        if (commentId) {
-          // Add this paragraph index to the comment's paragraph set
-          if (!context.commentToParagraphMap!.has(commentId)) {
-            context.commentToParagraphMap!.set(commentId, new Set());
-          }
-          const paragraphSet = context.commentToParagraphMap!.get(commentId);
-          if (paragraphSet) {
-            paragraphSet.add(currentParagraphIndex);
-          }
-        }
-      }
-    });
-  }
+  // Note: Comment range processing is now handled globally in transformDocumentToHtml
+  // before paragraph transformation begins. This ensures multi-paragraph ranges
+  // are correctly identified and all spanned paragraphs are mapped to comments.
 
   // Get effective numbering (direct or style-based)
   const effectiveNumbering = getEffectiveNumbering(paragraphProps, context.styles);
@@ -1770,6 +1684,121 @@ export function transformNoteContent(
 }
 
 /**
+ * Pre-scan document to identify all comment ranges globally
+ * This handles multi-paragraph comment ranges correctly
+ */
+function scanCommentRanges(
+  body: Element,
+  globalCommentRanges: Map<string, CommentRangeTracker>
+): void {
+  let paragraphIndex = 0;
+  
+  // Get all paragraph elements in document order
+  const contentElements = Array.from(body.children).filter(element => {
+    const tagName = element.tagName.toLowerCase();
+    return tagName.match(/^(w:)?p$/);
+  });
+  
+  contentElements.forEach((paragraphElement) => {
+    let spanIndex = 0;
+    
+    // Scan all children to find comment range markers
+    Array.from(paragraphElement.children).forEach((child) => {
+      const tagName = child.tagName.toLowerCase();
+      
+      if (tagName.match(/^(w:)?commentrangestart$/)) {
+        const commentId = child.getAttribute('w:id') || child.getAttribute('id');
+        if (commentId) {
+          // Record the start of this comment range
+          globalCommentRanges.set(commentId, {
+            commentId,
+            startParagraphIndex: paragraphIndex,
+            startSpanIndex: spanIndex
+          });
+        }
+      } else if (tagName.match(/^(w:)?commentrangeend$/)) {
+        const commentId = child.getAttribute('w:id') || child.getAttribute('id');
+        if (commentId) {
+          // Complete the range for this comment
+          const tracker = globalCommentRanges.get(commentId);
+          if (tracker) {
+            tracker.endParagraphIndex = paragraphIndex;
+            tracker.endSpanIndex = spanIndex;
+          }
+        }
+      } else if (tagName.match(/^(w:)?r$/)) {
+        // This is a run element, increment span counter
+        spanIndex++;
+      }
+    });
+    
+    paragraphIndex++;
+  });
+}
+
+/**
+ * Process global comment ranges to populate paragraph mappings and per-paragraph ranges
+ */
+function processGlobalCommentRanges(
+  globalCommentRanges: Map<string, CommentRangeTracker>,
+  commentToParagraphMap: Map<string, Set<number>>,
+  commentRanges: Map<string, CommentRangeInfo[]>
+): void {
+  globalCommentRanges.forEach((tracker, commentId) => {
+    if (tracker.endParagraphIndex === undefined || tracker.endSpanIndex === undefined) {
+      // Incomplete range, skip
+      return;
+    }
+    
+    // Map comment to all paragraphs it spans (inclusive)
+    const paragraphSet = new Set<number>();
+    for (let i = tracker.startParagraphIndex; i <= tracker.endParagraphIndex; i++) {
+      paragraphSet.add(i);
+    }
+    commentToParagraphMap.set(commentId, paragraphSet);
+    
+    // Create per-paragraph ranges for highlighting
+    const ranges: CommentRangeInfo[] = [];
+    
+    if (tracker.startParagraphIndex === tracker.endParagraphIndex) {
+      // Single paragraph range
+      ranges.push({
+        paragraphIndex: tracker.startParagraphIndex,
+        startSpanIndex: tracker.startSpanIndex,
+        endSpanIndex: tracker.endSpanIndex
+      });
+    } else {
+      // Multi-paragraph range
+      
+      // First paragraph: from startSpanIndex to end of paragraph (we'll use a large number)
+      ranges.push({
+        paragraphIndex: tracker.startParagraphIndex,
+        startSpanIndex: tracker.startSpanIndex,
+        endSpanIndex: 9999 // Will be clamped to actual span count during highlighting
+      });
+      
+      // Middle paragraphs: entire paragraph (all spans)
+      for (let i = tracker.startParagraphIndex + 1; i < tracker.endParagraphIndex; i++) {
+        ranges.push({
+          paragraphIndex: i,
+          startSpanIndex: 0,
+          endSpanIndex: 9999 // Will be clamped to actual span count during highlighting
+        });
+      }
+      
+      // Last paragraph: from beginning to endSpanIndex
+      ranges.push({
+        paragraphIndex: tracker.endParagraphIndex,
+        startSpanIndex: 0,
+        endSpanIndex: tracker.endSpanIndex
+      });
+    }
+    
+    commentRanges.set(commentId, ranges);
+  });
+}
+
+/**
  * Transform Word document XML to HTML
  */
 export function transformDocumentToHtml(
@@ -1792,6 +1821,7 @@ export function transformDocumentToHtml(
   const commentToParagraphMap = new Map<string, Set<number>>();
   const wordParaIdToIndex = new Map<string, number>();
   const commentRanges = new Map<string, CommentRangeInfo[]>();
+  const globalCommentRanges = new Map<string, CommentRangeTracker>();
   const paragraphs: string[] = [];
   const context: TransformContext = {
     notes: noteContext,
@@ -1803,7 +1833,8 @@ export function transformDocumentToHtml(
     commentToParagraphMap,
     wordParaIdToIndex,
     paragraphs,
-    commentRanges
+    commentRanges,
+    globalCommentRanges
   };
   
   // Find all paragraph and table elements in the document body
@@ -1815,6 +1846,12 @@ export function transformDocumentToHtml(
       paragraphs: []
     };
   }
+
+  // First pass: Scan for comment ranges globally
+  scanCommentRanges(body, globalCommentRanges);
+  
+  // Process global comment ranges to populate paragraph mappings
+  processGlobalCommentRanges(globalCommentRanges, commentToParagraphMap, commentRanges);
 
   // Get all direct children that are paragraphs or tables
   const contentElements = Array.from(body.children).filter(element => {

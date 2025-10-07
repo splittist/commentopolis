@@ -77,13 +77,20 @@ function applyHighlightingToParagraph(
   ranges.forEach(range => {
     const { startSpanIndex, endSpanIndex } = range;
     
-    // Validate indices
-    if (startSpanIndex < 0 || endSpanIndex > allSpans.length || startSpanIndex >= endSpanIndex) {
+    // Validate and clamp indices
+    if (startSpanIndex < 0 || startSpanIndex >= allSpans.length) {
+      return;
+    }
+    
+    // Clamp endSpanIndex to the actual number of spans
+    const clampedEndSpanIndex = Math.min(endSpanIndex, allSpans.length);
+    
+    if (startSpanIndex >= clampedEndSpanIndex) {
       return;
     }
 
     // Get the spans to be highlighted
-    const spansToHighlight = allSpans.slice(startSpanIndex, endSpanIndex);
+    const spansToHighlight = allSpans.slice(startSpanIndex, clampedEndSpanIndex);
     
     if (spansToHighlight.length === 0) {
       return;

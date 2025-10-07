@@ -106,11 +106,37 @@ describe('Comment Range Highlighting Integration', () => {
     // Verify paragraphs were created
     expect(result.paragraphs).toHaveLength(3);
     
-    // Note: Current implementation tracks ranges within individual paragraphs
-    // Multi-paragraph ranges where start and end are in different paragraphs
-    // are not yet fully supported - this is a known limitation
-    // The commentReference will still map the comment to the correct paragraphs via commentToParagraphMap
-    expect(result.commentToParagraphMap?.get('1')).toContain(2);
+    // Verify multi-paragraph range is now properly supported
+    expect(result.commentToParagraphMap?.get('1')).toEqual(expect.arrayContaining([0, 1, 2]));
+    
+    // Verify comment ranges are created for all paragraphs in the range
+    expect(result.commentRanges).toBeDefined();
+    expect(result.commentRanges?.has('1')).toBe(true);
+    
+    const ranges = result.commentRanges?.get('1');
+    expect(ranges).toBeDefined();
+    expect(ranges).toHaveLength(3); // Three ranges: start paragraph, middle paragraph, end paragraph
+    
+    // First paragraph: from startSpanIndex to end of paragraph
+    expect(ranges![0]).toMatchObject({
+      paragraphIndex: 0,
+      startSpanIndex: 0,
+      endSpanIndex: 9999 // Will be clamped during highlighting
+    });
+    
+    // Middle paragraph: entire paragraph
+    expect(ranges![1]).toMatchObject({
+      paragraphIndex: 1,
+      startSpanIndex: 0,
+      endSpanIndex: 9999
+    });
+    
+    // Last paragraph: from beginning to endSpanIndex
+    expect(ranges![2]).toMatchObject({
+      paragraphIndex: 2,
+      startSpanIndex: 0,
+      endSpanIndex: 1 // Ends after first span
+    });
   });
 
   it('should handle multiple overlapping comments', () => {
