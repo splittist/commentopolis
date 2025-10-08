@@ -24,16 +24,16 @@ describe('CommentFilters', () => {
       id: 'comment1',
       author: 'John Doe',
       date: new Date('2023-01-01T10:00:00Z'),
-      plainText: 'Test comment',
-      content: '<p>Test comment</p>',
+      plainText: 'Test comment #budget',
+      content: '<p>Test comment #budget</p>',
       documentId: 'doc1',
     },
     {
       id: 'comment2',
       author: 'Jane Smith',
       date: new Date('2023-01-02T11:00:00Z'),
-      plainText: 'Another comment',
-      content: '<p>Another comment</p>',
+      plainText: 'Another comment #timeline',
+      content: '<p>Another comment #timeline</p>',
       documentId: 'doc1',
     },
   ];
@@ -73,7 +73,8 @@ describe('CommentFilters', () => {
   it('should show reset button when filters are active', async () => {
     render(<CommentFilters />, { wrapper: TestWrapper });
 
-    const authorSelect = screen.getByRole('combobox');
+    const selects = screen.getAllByRole('combobox');
+    const authorSelect = selects[0]; // First select is author
     fireEvent.change(authorSelect, { target: { value: 'John Doe' } });
 
     await waitFor(() => {
@@ -84,7 +85,8 @@ describe('CommentFilters', () => {
   it('should show active filters status', async () => {
     render(<CommentFilters />, { wrapper: TestWrapper });
 
-    const authorSelect = screen.getByRole('combobox');
+    const selects = screen.getAllByRole('combobox');
+    const authorSelect = selects[0]; // First select is author
     fireEvent.change(authorSelect, { target: { value: 'John Doe' } });
 
     await waitFor(() => {
@@ -111,7 +113,8 @@ describe('CommentFilters', () => {
     render(<CommentFilters />, { wrapper: TestWrapper });
 
     // Set some filters
-    const authorSelect = screen.getByRole('combobox');
+    const selects = screen.getAllByRole('combobox');
+    const authorSelect = selects[0]; // First select is author
     fireEvent.change(authorSelect, { target: { value: 'John Doe' } });
 
     const searchInput = screen.getByPlaceholderText('Search in comments, authors, references...');
@@ -146,5 +149,49 @@ describe('CommentFilters', () => {
 
     expect(startDateInput).toHaveValue('2023-01-01');
     expect(endDateInput).toHaveValue('2023-01-31');
+  });
+
+  it('should show hashtag filter when comments have hashtags', () => {
+    render(<CommentFilters />, { wrapper: TestWrapper });
+
+    expect(screen.getByText('Hashtag')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'All hashtags' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '#budget' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '#timeline' })).toBeInTheDocument();
+  });
+
+  it('should not show hashtag filter when no hashtags are present', () => {
+    const commentsWithoutHashtags: DocumentComment[] = [
+      {
+        id: 'comment1',
+        author: 'John Doe',
+        date: new Date('2023-01-01T10:00:00Z'),
+        plainText: 'Test comment without hashtag',
+        content: '<p>Test comment without hashtag</p>',
+        documentId: 'doc1',
+      },
+    ];
+
+    mockUseDocumentContext.mockReturnValue({
+      comments: commentsWithoutHashtags,
+    });
+
+    render(<CommentFilters />, { wrapper: TestWrapper });
+
+    expect(screen.queryByText('Hashtag')).not.toBeInTheDocument();
+  });
+
+  it('should show hashtag in active filters status', async () => {
+    render(<CommentFilters />, { wrapper: TestWrapper });
+
+    // Find the hashtag select dropdown (there are 2 selects: author and hashtag)
+    const selects = screen.getAllByRole('combobox');
+    const hashtagSelect = selects[1]; // Second select is the hashtag filter
+    
+    fireEvent.change(hashtagSelect, { target: { value: 'budget' } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hashtag: #budget/)).toBeInTheDocument();
+    });
   });
 });

@@ -94,6 +94,7 @@ export interface CommentFilters {
     end: Date | null;
   };
   searchText: string; // Full-text search
+  hashtag: string; // Filter by hashtag (without # symbol, empty means no filter)
 }
 
 export interface CommentFilterState {
@@ -101,9 +102,11 @@ export interface CommentFilterState {
   setAuthorFilter: (author: string) => void;
   setDateRangeFilter: (start: Date | null, end: Date | null) => void;
   setSearchTextFilter: (searchText: string) => void;
+  setHashtagFilter: (hashtag: string) => void;
   resetFilters: () => void;
   getFilteredComments: (comments: DocumentComment[]) => DocumentComment[];
   getUniqueAuthors: (comments: DocumentComment[]) => string[];
+  getUniqueHashtags: (comments: DocumentComment[]) => string[];
 }
 
 export interface DocumentStateManager {
