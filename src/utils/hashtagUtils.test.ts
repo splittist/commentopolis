@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractHashtags, hasHashtag, getUniqueHashtags } from './hashtagUtils';
+import { extractHashtags, hasHashtag, hasAnyHashtag, getUniqueHashtags } from './hashtagUtils';
 
 describe('hashtagUtils', () => {
   describe('extractHashtags', () => {
@@ -100,6 +100,43 @@ describe('hashtagUtils', () => {
     it('should handle text without hashtags', () => {
       const text = 'This is a comment without hashtags';
       expect(hasHashtag(text, 'budget')).toBe(false);
+    });
+  });
+
+  describe('hasAnyHashtag', () => {
+    it('should return true when text has one of the hashtags', () => {
+      const text = 'This is about #budget planning';
+      expect(hasAnyHashtag(text, ['budget', 'timeline'])).toBe(true);
+      expect(hasAnyHashtag(text, ['timeline', 'budget'])).toBe(true);
+    });
+
+    it('should return false when text has none of the hashtags', () => {
+      const text = 'This is about #budget planning';
+      expect(hasAnyHashtag(text, ['timeline', 'urgent'])).toBe(false);
+    });
+
+    it('should return true when empty array is provided (no filter)', () => {
+      const text = 'This is about #budget planning';
+      expect(hasAnyHashtag(text, [])).toBe(true);
+    });
+
+    it('should be case-insensitive', () => {
+      const text = 'This is about #Budget planning';
+      expect(hasAnyHashtag(text, ['BUDGET', 'timeline'])).toBe(true);
+      expect(hasAnyHashtag(text, ['#BuDgEt'])).toBe(true);
+    });
+
+    it('should work with multiple hashtags in text', () => {
+      const text = 'Important: #budget and #timeline';
+      expect(hasAnyHashtag(text, ['budget'])).toBe(true);
+      expect(hasAnyHashtag(text, ['timeline'])).toBe(true);
+      expect(hasAnyHashtag(text, ['budget', 'timeline'])).toBe(true);
+      expect(hasAnyHashtag(text, ['urgent'])).toBe(false);
+    });
+
+    it('should handle text without hashtags', () => {
+      const text = 'This is a comment without hashtags';
+      expect(hasAnyHashtag(text, ['budget', 'timeline'])).toBe(false);
     });
   });
 

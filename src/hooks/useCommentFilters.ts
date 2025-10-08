@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { CommentFilters, CommentFilterState, DocumentComment } from '../types';
-import { hasHashtag, getUniqueHashtags as getHashtagsFromTexts } from '../utils/hashtagUtils';
+import { hasAnyHashtag, getUniqueHashtags as getHashtagsFromTexts } from '../utils/hashtagUtils';
 
 const DEFAULT_FILTERS: CommentFilters = {
   author: '',
@@ -9,7 +9,7 @@ const DEFAULT_FILTERS: CommentFilters = {
     end: null,
   },
   searchText: '',
-  hashtag: '',
+  hashtags: [],
 };
 
 /**
@@ -33,8 +33,8 @@ export const useCommentFilters = (): CommentFilterState => {
     setFilters(prev => ({ ...prev, searchText }));
   }, []);
 
-  const setHashtagFilter = useCallback((hashtag: string) => {
-    setFilters(prev => ({ ...prev, hashtag }));
+  const setHashtagsFilter = useCallback((hashtags: string[]) => {
+    setFilters(prev => ({ ...prev, hashtags }));
   }, []);
 
   const resetFilters = useCallback(() => {
@@ -72,8 +72,8 @@ export const useCommentFilters = (): CommentFilterState => {
       }
 
       // Hashtag filter
-      if (filters.hashtag) {
-        if (!hasHashtag(comment.plainText, filters.hashtag)) {
+      if (filters.hashtags.length > 0) {
+        if (!hasAnyHashtag(comment.plainText, filters.hashtags)) {
           return false;
         }
       }
@@ -97,7 +97,7 @@ export const useCommentFilters = (): CommentFilterState => {
     setAuthorFilter,
     setDateRangeFilter,
     setSearchTextFilter,
-    setHashtagFilter,
+    setHashtagsFilter,
     resetFilters,
     getFilteredComments,
     getUniqueAuthors,

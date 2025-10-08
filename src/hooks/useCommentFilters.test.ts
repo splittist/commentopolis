@@ -40,7 +40,7 @@ describe('useCommentFilters', () => {
     expect(result.current.filters.dateRange.start).toBeNull();
     expect(result.current.filters.dateRange.end).toBeNull();
     expect(result.current.filters.searchText).toBe('');
-    expect(result.current.filters.hashtag).toBe('');
+    expect(result.current.filters.hashtags).toEqual([]);
   });
 
   it('should filter comments by author', () => {
@@ -101,7 +101,7 @@ describe('useCommentFilters', () => {
     act(() => {
       result.current.setAuthorFilter('John Doe');
       result.current.setSearchTextFilter('test');
-      result.current.setHashtagFilter('budget');
+      result.current.setHashtagsFilter(['budget']);
       result.current.setDateRangeFilter(new Date('2023-01-01'), new Date('2023-01-02'));
     });
 
@@ -113,7 +113,7 @@ describe('useCommentFilters', () => {
     expect(result.current.filters.dateRange.start).toBeNull();
     expect(result.current.filters.dateRange.end).toBeNull();
     expect(result.current.filters.searchText).toBe('');
-    expect(result.current.filters.hashtag).toBe('');
+    expect(result.current.filters.hashtags).toEqual([]);
   });
 
   it('should get unique authors from comments', () => {
@@ -146,11 +146,11 @@ describe('useCommentFilters', () => {
     expect(filteredComments).toHaveLength(3);
   });
 
-  it('should filter comments by hashtag', () => {
+  it('should filter comments by single hashtag', () => {
     const { result } = renderHook(() => useCommentFilters());
 
     act(() => {
-      result.current.setHashtagFilter('budget');
+      result.current.setHashtagsFilter(['budget']);
     });
 
     const filteredComments = result.current.getFilteredComments(mockComments);
@@ -158,11 +158,23 @@ describe('useCommentFilters', () => {
     expect(filteredComments.every(comment => comment.plainText.includes('#budget'))).toBe(true);
   });
 
+  it('should filter comments by multiple hashtags', () => {
+    const { result } = renderHook(() => useCommentFilters());
+
+    act(() => {
+      result.current.setHashtagsFilter(['budget', 'timeline']);
+    });
+
+    const filteredComments = result.current.getFilteredComments(mockComments);
+    // Should include comments with #budget OR #timeline
+    expect(filteredComments).toHaveLength(3);
+  });
+
   it('should filter comments by hashtag with # symbol', () => {
     const { result } = renderHook(() => useCommentFilters());
 
     act(() => {
-      result.current.setHashtagFilter('#budget');
+      result.current.setHashtagsFilter(['#budget']);
     });
 
     const filteredComments = result.current.getFilteredComments(mockComments);
@@ -173,11 +185,22 @@ describe('useCommentFilters', () => {
     const { result } = renderHook(() => useCommentFilters());
 
     act(() => {
-      result.current.setHashtagFilter('BUDGET');
+      result.current.setHashtagsFilter(['BUDGET']);
     });
 
     const filteredComments = result.current.getFilteredComments(mockComments);
     expect(filteredComments).toHaveLength(2);
+  });
+
+  it('should return all comments when hashtags filter is empty array', () => {
+    const { result } = renderHook(() => useCommentFilters());
+
+    act(() => {
+      result.current.setHashtagsFilter([]);
+    });
+
+    const filteredComments = result.current.getFilteredComments(mockComments);
+    expect(filteredComments).toHaveLength(3);
   });
 
   it('should get unique hashtags from comments', () => {
@@ -192,7 +215,7 @@ describe('useCommentFilters', () => {
 
     act(() => {
       result.current.setAuthorFilter('John Doe');
-      result.current.setHashtagFilter('budget');
+      result.current.setHashtagsFilter(['budget']);
     });
 
     const filteredComments = result.current.getFilteredComments(mockComments);
