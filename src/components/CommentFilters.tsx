@@ -11,7 +11,7 @@ interface CommentFiltersProps {
  * CommentFilters component for filtering comments in the left panel
  */
 export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }) => {
-  const { filters, setAuthorFilter, setDateRangeFilter, setSearchTextFilter, resetFilters, getUniqueAuthors } = useCommentFilterContext();
+  const { filters, setAuthorFilter, setDateRangeFilter, setSearchTextFilter, setHashtagFilter, resetFilters, getUniqueAuthors, getUniqueHashtags } = useCommentFilterContext();
   const { comments } = useDocumentContext();
   
   // Local state for search input to handle debouncing
@@ -25,6 +25,9 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
 
   // Get unique authors for dropdown
   const uniqueAuthors = getUniqueAuthors(comments);
+
+  // Get unique hashtags for dropdown
+  const uniqueHashtags = getUniqueHashtags(comments);
 
   // Format date for input (YYYY-MM-DD)
   const formatDateForInput = (date: Date | null): string => {
@@ -44,7 +47,7 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
   };
 
   // Check if any filters are active
-  const hasActiveFilters = filters.author || filters.dateRange.start || filters.dateRange.end || filters.searchText;
+  const hasActiveFilters = filters.author || filters.dateRange.start || filters.dateRange.end || filters.searchText || filters.hashtag;
 
   if (comments.length === 0) {
     return null; // Don't show filters if there are no comments
@@ -133,13 +136,35 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
         </div>
       </div>
 
+      {/* Hashtag Filter */}
+      {uniqueHashtags.length > 0 && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Hashtag
+          </label>
+          <select
+            value={filters.hashtag}
+            onChange={(e) => setHashtagFilter(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">All hashtags</option>
+            {uniqueHashtags.map(hashtag => (
+              <option key={hashtag} value={hashtag}>
+                #{hashtag}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Filter Status */}
       {hasActiveFilters && (
         <div className="text-xs text-gray-500 pt-2 border-t border-gray-200">
           Active filters: {[
             filters.author && `Author: ${filters.author}`,
             (filters.dateRange.start || filters.dateRange.end) && 'Date range',
-            filters.searchText && `Search: "${filters.searchText}"`
+            filters.searchText && `Search: "${filters.searchText}"`,
+            filters.hashtag && `Hashtag: #${filters.hashtag}`
           ].filter(Boolean).join(', ')}
         </div>
       )}
