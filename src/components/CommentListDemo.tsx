@@ -225,7 +225,7 @@ export const CommentListDemo: React.FC<CommentListDemoProps> = ({ className = ''
 const DemoCommentList: React.FC = () => {
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'author-asc' | 'author-desc'>('date-desc');
+  const [sortBy, setSortBy] = useState<'document-order' | 'date-desc' | 'date-asc' | 'author-asc' | 'author-desc'>('document-order');
   
   // Get access to the global context to sync selected comment
   const { setSelectedComment } = useDocumentContext();
@@ -237,6 +237,27 @@ const DemoCommentList: React.FC = () => {
 
   const sortedComments = [...filteredComments].sort((a, b) => {
     switch (sortBy) {
+      case 'document-order': {
+        // Sort by comment ID which represents document order
+        // Comment IDs follow pattern: documentId-sequentialNumber
+        const getIdNumber = (id: string) => {
+          const parts = id.split('-');
+          const lastPart = parts[parts.length - 1];
+          const num = parseInt(lastPart, 10);
+          return isNaN(num) ? 0 : num;
+        };
+        
+        const numA = getIdNumber(a.id);
+        const numB = getIdNumber(b.id);
+        
+        // If both have valid numbers, sort by them
+        if (numA !== numB) {
+          return numA - numB;
+        }
+        
+        // Fall back to string comparison if numbers are equal
+        return a.id.localeCompare(b.id);
+      }
       case 'date-desc':
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       case 'date-asc':
@@ -306,6 +327,7 @@ const DemoCommentList: React.FC = () => {
           onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
           className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
+          <option value="document-order">Document order</option>
           <option value="date-desc">Newest first</option>
           <option value="date-asc">Oldest first</option>
           <option value="author-asc">Author A-Z</option>
