@@ -251,7 +251,7 @@ describe('CommentList', () => {
     expect(screen.getByText('Comment 3')).toBeInTheDocument();
   });
 
-  it('should handle sorting by date descending (default)', () => {
+  it('should handle sorting by document order (default)', () => {
     mockUseDocumentContext.mockReturnValue({
       documents: mockDocuments,
       activeDocumentId: null,
@@ -264,10 +264,10 @@ describe('CommentList', () => {
     render(<CommentList />, { wrapper: TestWrapper });
 
     const commentElements = screen.getAllByText(/This is/);
-    // Should be sorted by date descending (newest first)
-    expect(commentElements[0]).toHaveTextContent('This is a comment from another document'); // 2023-01-02
-    expect(commentElements[1]).toHaveTextContent('This is the second comment'); // 2023-01-01 11:00
-    expect(commentElements[2]).toHaveTextContent('This is the first comment'); // 2023-01-01 10:00
+    // Should be sorted by document order (comment1, comment2, comment3)
+    expect(commentElements[0]).toHaveTextContent('This is the first comment'); // comment1
+    expect(commentElements[1]).toHaveTextContent('This is the second comment'); // comment2
+    expect(commentElements[2]).toHaveTextContent('This is a comment from another document'); // comment3
   });
 
   it('should allow sorting by author ascending', () => {
@@ -503,5 +503,67 @@ describe('CommentList', () => {
     fireEvent.click(childNavButton);
 
     expect(mockSetSelectedComment).toHaveBeenCalledWith('reply1');
+  });
+
+  it('should preserve threading with document order sorting', () => {
+    const threadedComments: DocumentComment[] = [
+      {
+        id: 'doc1-comment1',
+        paraId: 'para1',
+        author: 'Alice',
+        initial: 'A',
+        date: new Date('2023-01-01T10:00:00Z'),
+        plainText: 'Parent comment',
+        content: '<p>Parent comment</p>',
+        documentId: 'doc1',
+        reference: 'Page 1',
+        children: ['para2'],
+      },
+      {
+        id: 'doc1-comment2',
+        paraId: 'para2',
+        author: 'Bob',
+        initial: 'B',
+        date: new Date('2023-01-01T11:00:00Z'),
+        plainText: 'Reply to parent',
+        content: '<p>Reply to parent</p>',
+        documentId: 'doc1',
+        reference: 'Page 1',
+        parentId: 'para1',
+      },
+      {
+        id: 'doc1-comment3',
+        paraId: 'para3',
+        author: 'Charlie',
+        initial: 'C',
+        date: new Date('2023-01-01T12:00:00Z'),
+        plainText: 'Another top-level comment',
+        content: '<p>Another top-level comment</p>',
+        documentId: 'doc1',
+        reference: 'Page 2',
+        children: [],
+      },
+    ];
+
+    mockUseDocumentContext.mockReturnValue({
+      documents: mockDocuments,
+      activeDocumentId: null,
+      selectedDocumentIds: ['doc1'],
+      comments: threadedComments,
+      selectedCommentId: null,
+      setSelectedComment: mockSetSelectedComment,
+    });
+
+    render(<CommentList />, { wrapper: TestWrapper });
+    
+    // Check that threading indicators are present
+    expect(screen.getByText('↳ Reply')).toBeInTheDocument();
+    expect(screen.getByText('1 reply')).toBeInTheDocument();
+    expect(screen.getByText('Replying to:')).toBeInTheDocument();
+    
+    // Verify all comments are rendered
+    expect(screen.getAllByText(/Parent comment/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Reply to parent/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Another top-level comment')).toBeInTheDocument();
   });
 });

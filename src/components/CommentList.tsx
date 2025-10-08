@@ -3,7 +3,7 @@ import type { DocumentComment } from '../types';
 import { useDocumentContext } from '../hooks/useDocumentContext';
 import { useCommentFilterContext } from '../hooks/useCommentFilterContext';
 
-export type SortOption = 'date-desc' | 'date-asc' | 'author-asc' | 'author-desc';
+export type SortOption = 'document-order' | 'date-desc' | 'date-asc' | 'author-asc' | 'author-desc';
 
 interface CommentListProps {
   className?: string;
@@ -15,7 +15,7 @@ interface CommentListProps {
 export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
   const { documents, activeDocumentId, selectedDocumentIds, comments, selectedCommentId, setSelectedComment } = useDocumentContext();
   const { getFilteredComments } = useCommentFilterContext();
-  const [sortBy, setSortBy] = useState<SortOption>('date-desc');
+  const [sortBy, setSortBy] = useState<SortOption>('document-order');
 
   // Filter comments based on selected document(s)
   const selectedComments = useMemo(() => {
@@ -43,6 +43,29 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
     const sorted = [...filteredComments];
     
     switch (sortBy) {
+      case 'document-order':
+        // Sort by comment ID which represents document order
+        // Comment IDs follow pattern: documentId-sequentialNumber
+        return sorted.sort((a, b) => {
+          // Extract the numeric part of the comment ID (after the last hyphen)
+          const getIdNumber = (id: string) => {
+            const parts = id.split('-');
+            const lastPart = parts[parts.length - 1];
+            const num = parseInt(lastPart, 10);
+            return isNaN(num) ? 0 : num;
+          };
+          
+          const numA = getIdNumber(a.id);
+          const numB = getIdNumber(b.id);
+          
+          // If both have valid numbers, sort by them
+          if (numA !== numB) {
+            return numA - numB;
+          }
+          
+          // Fall back to string comparison if numbers are equal
+          return a.id.localeCompare(b.id);
+        });
       case 'date-desc':
         return sorted.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       case 'date-asc':
@@ -164,6 +187,7 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
           onChange={(e) => setSortBy(e.target.value as SortOption)}
           className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
+          <option value="document-order">Document order</option>
           <option value="date-desc">Newest first</option>
           <option value="date-asc">Oldest first</option>
           <option value="author-asc">Author A-Z</option>
