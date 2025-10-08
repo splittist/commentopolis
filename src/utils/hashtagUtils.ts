@@ -41,6 +41,19 @@ export function hasHashtag(text: string, hashtag: string): boolean {
 }
 
 /**
+ * Check if a text contains any of the specified hashtags
+ * @param text - The text to search in
+ * @param hashtagsToCheck - Array of hashtags to search for (with or without # symbol)
+ * @returns true if any of the hashtags are found, false otherwise
+ */
+export function hasAnyHashtag(text: string, hashtagsToCheck: string[]): boolean {
+  if (hashtagsToCheck.length === 0) {
+    return true; // No filter means all pass
+  }
+  return hashtagsToCheck.some(hashtag => hasHashtag(text, hashtag));
+}
+
+/**
  * Get unique hashtags from an array of texts
  * @param texts - Array of text strings to scan
  * @returns Sorted array of unique hashtags (without # symbol)

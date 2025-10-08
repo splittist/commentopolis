@@ -11,7 +11,7 @@ interface CommentFiltersProps {
  * CommentFilters component for filtering comments in the left panel
  */
 export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }) => {
-  const { filters, setAuthorFilter, setDateRangeFilter, setSearchTextFilter, setHashtagFilter, resetFilters, getUniqueAuthors, getUniqueHashtags } = useCommentFilterContext();
+  const { filters, setAuthorFilter, setDateRangeFilter, setSearchTextFilter, setHashtagsFilter, resetFilters, getUniqueAuthors, getUniqueHashtags } = useCommentFilterContext();
   const { comments } = useDocumentContext();
   
   // Local state for search input to handle debouncing
@@ -46,8 +46,20 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
     resetFilters();
   };
 
+  // Handler for hashtag checkbox changes
+  const handleHashtagToggle = (hashtag: string) => {
+    const currentHashtags = filters.hashtags;
+    if (currentHashtags.includes(hashtag)) {
+      // Remove hashtag from filter
+      setHashtagsFilter(currentHashtags.filter(h => h !== hashtag));
+    } else {
+      // Add hashtag to filter
+      setHashtagsFilter([...currentHashtags, hashtag]);
+    }
+  };
+
   // Check if any filters are active
-  const hasActiveFilters = filters.author || filters.dateRange.start || filters.dateRange.end || filters.searchText || filters.hashtag;
+  const hasActiveFilters = filters.author || filters.dateRange.start || filters.dateRange.end || filters.searchText || filters.hashtags.length > 0;
 
   if (comments.length === 0) {
     return null; // Don't show filters if there are no comments
@@ -140,20 +152,24 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
       {uniqueHashtags.length > 0 && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Hashtag
+            Hashtags
           </label>
-          <select
-            value={filters.hashtag}
-            onChange={(e) => setHashtagFilter(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          >
-            <option value="">All hashtags</option>
+          <div className="space-y-1 max-h-48 overflow-y-auto border border-gray-300 rounded-md p-2">
             {uniqueHashtags.map(hashtag => (
-              <option key={hashtag} value={hashtag}>
-                #{hashtag}
-              </option>
+              <label 
+                key={hashtag} 
+                className="flex items-center space-x-2 hover:bg-gray-50 p-1 rounded cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={filters.hashtags.includes(hashtag)}
+                  onChange={() => handleHashtagToggle(hashtag)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-700">#{hashtag}</span>
+              </label>
             ))}
-          </select>
+          </div>
         </div>
       )}
 
@@ -164,7 +180,7 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
             filters.author && `Author: ${filters.author}`,
             (filters.dateRange.start || filters.dateRange.end) && 'Date range',
             filters.searchText && `Search: "${filters.searchText}"`,
-            filters.hashtag && `Hashtag: #${filters.hashtag}`
+            filters.hashtags.length > 0 && `Hashtags: ${filters.hashtags.map(h => `#${h}`).join(', ')}`
           ].filter(Boolean).join(', ')}
         </div>
       )}

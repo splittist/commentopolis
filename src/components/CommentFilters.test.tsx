@@ -154,10 +154,9 @@ describe('CommentFilters', () => {
   it('should show hashtag filter when comments have hashtags', () => {
     render(<CommentFilters />, { wrapper: TestWrapper });
 
-    expect(screen.getByText('Hashtag')).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'All hashtags' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '#budget' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: '#timeline' })).toBeInTheDocument();
+    expect(screen.getByText('Hashtags')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /#budget/ })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /#timeline/ })).toBeInTheDocument();
   });
 
   it('should not show hashtag filter when no hashtags are present', () => {
@@ -178,20 +177,50 @@ describe('CommentFilters', () => {
 
     render(<CommentFilters />, { wrapper: TestWrapper });
 
-    expect(screen.queryByText('Hashtag')).not.toBeInTheDocument();
+    expect(screen.queryByText('Hashtags')).not.toBeInTheDocument();
   });
 
-  it('should show hashtag in active filters status', async () => {
+  it('should allow selecting multiple hashtags', async () => {
     render(<CommentFilters />, { wrapper: TestWrapper });
 
-    // Find the hashtag select dropdown (there are 2 selects: author and hashtag)
-    const selects = screen.getAllByRole('combobox');
-    const hashtagSelect = selects[1]; // Second select is the hashtag filter
+    // Find and click the hashtag checkboxes
+    const budgetCheckbox = screen.getByRole('checkbox', { name: /#budget/ });
+    const timelineCheckbox = screen.getByRole('checkbox', { name: /#timeline/ });
     
-    fireEvent.change(hashtagSelect, { target: { value: 'budget' } });
+    fireEvent.click(budgetCheckbox);
+    fireEvent.click(timelineCheckbox);
 
     await waitFor(() => {
-      expect(screen.getByText(/Hashtag: #budget/)).toBeInTheDocument();
+      expect(screen.getByText(/Hashtags: #budget, #timeline/)).toBeInTheDocument();
+    });
+  });
+
+  it('should show selected hashtags in active filters status', async () => {
+    render(<CommentFilters />, { wrapper: TestWrapper });
+
+    // Find and click a hashtag checkbox
+    const budgetCheckbox = screen.getByRole('checkbox', { name: /#budget/ });
+    fireEvent.click(budgetCheckbox);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Hashtags: #budget/)).toBeInTheDocument();
+    });
+  });
+
+  it('should allow deselecting hashtags', async () => {
+    render(<CommentFilters />, { wrapper: TestWrapper });
+
+    // Select and then deselect a hashtag
+    const budgetCheckbox = screen.getByRole('checkbox', { name: /#budget/ });
+    
+    fireEvent.click(budgetCheckbox);
+    await waitFor(() => {
+      expect(screen.getByText(/Hashtags: #budget/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(budgetCheckbox);
+    await waitFor(() => {
+      expect(screen.queryByText(/Hashtags:/)).not.toBeInTheDocument();
     });
   });
 });
