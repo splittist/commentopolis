@@ -13,7 +13,7 @@ interface CommentListProps {
  * CommentList component for displaying extracted comments from documents
  */
 export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
-  const { documents, activeDocumentId, selectedDocumentIds, comments, selectedCommentId, setSelectedComment } = useDocumentContext();
+  const { documents, activeDocumentId, selectedDocumentIds, comments, selectedCommentIds, toggleCommentSelection } = useDocumentContext();
   const { getFilteredComments } = useCommentFilterContext();
   const [sortBy, setSortBy] = useState<SortOption>('document-order');
 
@@ -96,9 +96,10 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
     }).format(new Date(date));
   };
 
-  // Handle comment selection
-  const handleCommentClick = (commentId: string) => {
-    setSelectedComment(commentId === selectedCommentId ? null : commentId);
+  // Handle comment selection with multi-select support
+  const handleCommentClick = (commentId: string, event: React.MouseEvent) => {
+    const isMultiSelect = event.ctrlKey || event.metaKey; // Ctrl on Windows/Linux, Cmd on Mac
+    toggleCommentSelection(commentId, isMultiSelect);
   };
 
   // Get comment by ID or paraId
@@ -115,7 +116,8 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
   // Navigate to a specific comment
   const navigateToComment = (commentId: string, event: React.MouseEvent) => {
     event.stopPropagation(); // Prevent triggering parent click
-    setSelectedComment(commentId);
+    const isMultiSelect = event.ctrlKey || event.metaKey;
+    toggleCommentSelection(commentId, isMultiSelect);
     
     // Scroll to the comment
     setTimeout(() => {
@@ -217,11 +219,11 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                 <div
                   key={comment.id}
                   id={`comment-${comment.id}`}
-                  onClick={() => handleCommentClick(comment.id)}
+                  onClick={(e) => handleCommentClick(comment.id, e)}
                   className={`bg-white rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
                     isReply ? 'ml-8 border-l-4 border-l-purple-300' : ''
                   } ${
-                    selectedCommentId === comment.id
+                    selectedCommentIds.includes(comment.id)
                       ? 'border-blue-500 ring-2 ring-blue-200 shadow-md'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
@@ -322,9 +324,9 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                     )}
 
                     {/* Selection indicator */}
-                    {selectedCommentId === comment.id && (
+                    {selectedCommentIds.includes(comment.id) && (
                       <div className="mt-2 text-xs text-blue-600 font-medium">
-                        ✓ Selected for review
+                        ✓ Selected for review {selectedCommentIds.length > 1 && `(${selectedCommentIds.indexOf(comment.id) + 1} of ${selectedCommentIds.length})`}
                       </div>
                     )}
                   </div>

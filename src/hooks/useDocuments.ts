@@ -12,6 +12,7 @@ export const useDocuments = (): DocumentStateManager => {
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [comments, setComments] = useState<DocumentComment[]>([]);
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
+  const [selectedCommentIds, setSelectedCommentIds] = useState<string[]>([]);
 
   const addDocument = useCallback(async (file: File) => {
     // Validate file type
@@ -141,6 +142,67 @@ export const useDocuments = (): DocumentStateManager => {
 
   const setSelectedComment = useCallback((id: string | null) => {
     setSelectedCommentId(id);
+    // When setting a single comment (backward compatibility), clear multi-selection
+    if (id) {
+      setSelectedCommentIds([id]);
+    } else {
+      setSelectedCommentIds([]);
+    }
+  }, []);
+
+  // New methods for multiple comment selection
+  const selectComment = useCallback((id: string) => {
+    setSelectedCommentIds(prev => {
+      if (!prev.includes(id)) {
+        return [...prev, id];
+      }
+      return prev;
+    });
+    // Update single selection for backward compatibility (use last selected)
+    setSelectedCommentId(id);
+  }, []);
+
+  const deselectComment = useCallback((id: string) => {
+    setSelectedCommentIds(prev => {
+      const newSelection = prev.filter(commentId => commentId !== id);
+      // Update single selection for backward compatibility
+      if (newSelection.length > 0) {
+        setSelectedCommentId(newSelection[newSelection.length - 1]);
+      } else {
+        setSelectedCommentId(null);
+      }
+      return newSelection;
+    });
+  }, []);
+
+  const toggleCommentSelection = useCallback((id: string, multiSelect: boolean = false) => {
+    setSelectedCommentIds(prev => {
+      if (multiSelect) {
+        // Multi-select mode: toggle the comment in the selection
+        if (prev.includes(id)) {
+          const newSelection = prev.filter(commentId => commentId !== id);
+          // Update single selection for backward compatibility
+          if (newSelection.length > 0) {
+            setSelectedCommentId(newSelection[newSelection.length - 1]);
+          } else {
+            setSelectedCommentId(null);
+          }
+          return newSelection;
+        } else {
+          setSelectedCommentId(id);
+          return [...prev, id];
+        }
+      } else {
+        // Single select mode: replace the selection
+        setSelectedCommentId(id === prev[0] && prev.length === 1 ? null : id);
+        return id === prev[0] && prev.length === 1 ? [] : [id];
+      }
+    });
+  }, []);
+
+  const clearSelectedComments = useCallback(() => {
+    setSelectedCommentIds([]);
+    setSelectedCommentId(null);
   }, []);
 
   // New methods for multiple document selection
@@ -200,10 +262,15 @@ export const useDocuments = (): DocumentStateManager => {
     selectedDocumentIds,
     comments,
     selectedCommentId,
+    selectedCommentIds,
     addDocument,
     removeDocument,
     setActiveDocument,
     setSelectedComment,
+    selectComment,
+    deselectComment,
+    toggleCommentSelection,
+    clearSelectedComments,
     selectDocument,
     deselectDocument,
     selectAllDocuments,

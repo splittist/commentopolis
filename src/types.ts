@@ -114,12 +114,18 @@ export interface DocumentStateManager {
   activeDocumentId: string | null; // Keep for backward compatibility, will be deprecated
   selectedDocumentIds: string[]; // New: array of selected document IDs
   comments: DocumentComment[]; // All comments from all documents
-  selectedCommentId: string | null; // Currently selected comment for right panel
+  selectedCommentId: string | null; // Currently selected comment for right panel (backward compatible)
+  selectedCommentIds: string[]; // New: array of selected comment IDs for multi-selection
   addDocument: (file: File) => void;
   removeDocument: (id: string) => void;
   setActiveDocument: (id: string | null) => void; // Keep for backward compatibility
-  setSelectedComment: (id: string | null) => void;
-  // New methods for multiple selection
+  setSelectedComment: (id: string | null) => void; // Keep for backward compatibility
+  // New methods for multiple comment selection
+  selectComment: (id: string) => void;
+  deselectComment: (id: string) => void;
+  toggleCommentSelection: (id: string, multiSelect?: boolean) => void;
+  clearSelectedComments: () => void;
+  // New methods for multiple document selection
   selectDocument: (id: string) => void;
   deselectDocument: (id: string) => void;
   selectAllDocuments: () => void;

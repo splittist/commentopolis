@@ -14,6 +14,7 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => (
 
 // Mock the useDocumentContext hook
 const mockSetSelectedComment = vi.fn();
+const mockToggleCommentSelection = vi.fn();
 const mockUseDocumentContext = vi.fn();
 
 vi.mock('../hooks/useDocumentContext', () => ({
@@ -81,7 +82,9 @@ describe('CommentList', () => {
       selectedDocumentIds: [],
       comments: mockComments,
       selectedCommentId: null,
+      selectedCommentIds: [],
       setSelectedComment: mockSetSelectedComment,
+      toggleCommentSelection: mockToggleCommentSelection,
     });
   });
 
@@ -93,6 +96,8 @@ describe('CommentList', () => {
       comments: [],
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -116,6 +121,8 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -134,6 +141,8 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -152,6 +161,8 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -173,6 +184,8 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -181,7 +194,7 @@ describe('CommentList', () => {
     expect(firstComment).toBeInTheDocument();
 
     fireEvent.click(firstComment!);
-    expect(mockSetSelectedComment).toHaveBeenCalledWith('comment1');
+    expect(mockToggleCommentSelection).toHaveBeenCalledWith('comment1', false);
   });
 
   it('should show selected comment with visual indicator', () => {
@@ -192,11 +205,13 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: 'comment1',
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: ['comment1'],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
 
-    expect(screen.getByText('✓ Selected for review')).toBeInTheDocument();
+    expect(screen.getByText(/✓ Selected for review/)).toBeInTheDocument();
   });
 
   it('should allow deselection of selected comment', () => {
@@ -207,13 +222,15 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: 'comment1',
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: ['comment1'],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
 
     const firstComment = screen.getByText('This is the first comment').closest('div');
     fireEvent.click(firstComment!);
-    expect(mockSetSelectedComment).toHaveBeenCalledWith(null);
+    expect(mockToggleCommentSelection).toHaveBeenCalledWith('comment1', false);
   });
 
   it('should render author initials and names correctly', () => {
@@ -224,6 +241,8 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -242,6 +261,8 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -259,6 +280,8 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -278,6 +301,8 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -300,6 +325,8 @@ describe('CommentList', () => {
       comments: mockComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -316,6 +343,8 @@ describe('CommentList', () => {
       comments: [],
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -359,6 +388,8 @@ describe('CommentList', () => {
       comments: threadedComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -404,6 +435,8 @@ describe('CommentList', () => {
       comments: threadedComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -450,6 +483,8 @@ describe('CommentList', () => {
       comments: threadedComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -457,7 +492,7 @@ describe('CommentList', () => {
     const parentNavButton = screen.getByRole('button', { name: '↑ View' });
     fireEvent.click(parentNavButton);
 
-    expect(mockSetSelectedComment).toHaveBeenCalledWith('parent1');
+    expect(mockToggleCommentSelection).toHaveBeenCalledWith('parent1', false);
   });
 
   it('should navigate to child comment when clicking child navigation button', () => {
@@ -495,6 +530,8 @@ describe('CommentList', () => {
       comments: threadedComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
@@ -502,7 +539,7 @@ describe('CommentList', () => {
     const childNavButton = screen.getByRole('button', { name: '↓ View' });
     fireEvent.click(childNavButton);
 
-    expect(mockSetSelectedComment).toHaveBeenCalledWith('reply1');
+    expect(mockToggleCommentSelection).toHaveBeenCalledWith('reply1', false);
   });
 
   it('should preserve threading with document order sorting', () => {
@@ -552,6 +589,8 @@ describe('CommentList', () => {
       comments: threadedComments,
       selectedCommentId: null,
       setSelectedComment: mockSetSelectedComment,
+      selectedCommentIds: [],
+      toggleCommentSelection: mockToggleCommentSelection,
     });
 
     render(<CommentList />, { wrapper: TestWrapper });
