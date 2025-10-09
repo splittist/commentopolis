@@ -7,4 +7,5 @@ export { DocumentList } from './DocumentList';
 export { DocumentViewer } from './DocumentViewer';
 export { CommentList } from './CommentList';
 export { CommentDetails } from './CommentDetails';
+export { MultipleCommentDetails } from './MultipleCommentDetails';
 export { CommentFilters } from './CommentFilters';
