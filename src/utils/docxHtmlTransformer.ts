@@ -1406,13 +1406,34 @@ function transformRun(
     }
   }
 
-  // Get text content
-  const textElements = runElement.querySelectorAll('w\\:t, t');
-  const text = Array.from(textElements)
-    .map(el => el.textContent || '')
-    .join('');
+  // Process run content (text and line breaks)
+  // We need to iterate through child nodes in order to preserve the sequence of text and breaks
+  const contentParts: string[] = [];
+  const children = Array.from(runElement.childNodes);
+  
+  for (const child of children) {
+    if (child.nodeType === Node.ELEMENT_NODE) {
+      const element = child as Element;
+      const tagName = element.tagName.toLowerCase();
+      
+      // Handle text elements
+      if (tagName.match(/^(w:)?t$/)) {
+        const text = element.textContent || '';
+        if (text) {
+          contentParts.push(escapeHtml(text));
+        }
+      }
+      // Handle line break elements
+      else if (tagName.match(/^(w:)?br$/)) {
+        contentParts.push('<br>');
+      }
+    }
+  }
 
-  if (!text.trim()) {
+  const content = contentParts.join('');
+  
+  // Check if there's any content (text or breaks)
+  if (!content || (content.replace(/<br>/g, '').trim() === '' && !content.includes('<br>'))) {
     return '';
   }
 
@@ -1420,10 +1441,10 @@ function transformRun(
   const styles = createRunStyles(mergedRunProps);
   
   if (styles) {
-    return `<span style="${styles}">${escapeHtml(text)}</span>`;
+    return `<span style="${styles}">${content}</span>`;
   }
   
-  return `<span>${escapeHtml(text)}</span>`; // Wrap in span for highlighting DEBUG
+  return `<span>${content}</span>`; // Wrap in span for highlighting DEBUG
 }
 
 /**
@@ -1949,10 +1970,29 @@ export function transformDocumentToHtml(
   const paragraphElements = body.querySelectorAll('w\\:p, p');
   const mainText = Array.from(paragraphElements)
     .map(p => {
-      const textElements = p.querySelectorAll('w\\:t, t');
-      return Array.from(textElements)
-        .map(el => el.textContent || '')
-        .join('');
+      // Extract text and line breaks from runs in order
+      const runs = p.querySelectorAll('w\\:r, r');
+      const runTexts = Array.from(runs).map(run => {
+        const parts: string[] = [];
+        const children = Array.from(run.childNodes);
+        
+        for (const child of children) {
+          if (child.nodeType === Node.ELEMENT_NODE) {
+            const element = child as Element;
+            const tagName = element.tagName.toLowerCase();
+            
+            if (tagName.match(/^(w:)?t$/)) {
+              parts.push(element.textContent || '');
+            } else if (tagName.match(/^(w:)?br$/)) {
+              parts.push('\n');
+            }
+          }
+        }
+        
+        return parts.join('');
+      });
+      
+      return runTexts.join('');
     })
     .filter(text => text.trim())
     .join('\n');
