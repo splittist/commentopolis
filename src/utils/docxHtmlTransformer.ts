@@ -1420,7 +1420,10 @@ function transformRun(
       if (tagName.match(/^(w:)?t$/)) {
         const text = element.textContent || '';
         if (text) {
-          contentParts.push(escapeHtml(text));
+          // Check for xml:space attribute to determine if whitespace should be preserved
+          const xmlSpace = element.getAttribute('xml:space');
+          const preserveSpace = xmlSpace === 'preserve';
+          contentParts.push(escapeHtmlWithSpace(text, preserveSpace));
         }
       }
       // Handle line break elements
@@ -1668,6 +1671,31 @@ function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+/**
+ * Escape HTML special characters and preserve whitespace for xml:space="preserve"
+ * When preserveSpace is true, converts leading/trailing spaces to &nbsp; for proper HTML rendering
+ */
+function escapeHtmlWithSpace(text: string, preserveSpace: boolean): string {
+  // First escape HTML entities
+  const escaped = escapeHtml(text);
+  
+  if (!preserveSpace) {
+    return escaped;
+  }
+  
+  // Convert leading and trailing spaces to &nbsp; for proper rendering
+  // This ensures that when xml:space="preserve" is set, spaces are actually visible in the browser
+  let result = escaped;
+  
+  // Replace leading spaces with &nbsp;
+  result = result.replace(/^( +)/, (match) => '&nbsp;'.repeat(match.length));
+  
+  // Replace trailing spaces with &nbsp;
+  result = result.replace(/( +)$/, (match) => '&nbsp;'.repeat(match.length));
+  
+  return result;
 }
 
 /**

@@ -1625,5 +1625,105 @@ describe('docxHtmlTransformer', () => {
       expect(result.html).toBe('<p><span>Text before break<br></span></p>');
       expect(result.plainText).toBe('Text before break\n');
     });
+
+    it('should preserve leading whitespace when xml:space is preserve', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:xml="http://www.w3.org/XML/1998/namespace">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t xml:space="preserve">  Leading spaces</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      // Leading spaces should be converted to &nbsp; for proper rendering
+      expect(result.html).toBe('<p><span>&nbsp;&nbsp;Leading spaces</span></p>');
+      expect(result.plainText).toBe('  Leading spaces');
+    });
+
+    it('should preserve trailing whitespace when xml:space is preserve', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:xml="http://www.w3.org/XML/1998/namespace">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t xml:space="preserve">Trailing spaces  </w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      // Trailing spaces should be converted to &nbsp; for proper rendering
+      expect(result.html).toBe('<p><span>Trailing spaces&nbsp;&nbsp;</span></p>');
+      expect(result.plainText).toBe('Trailing spaces  ');
+    });
+
+    it('should preserve both leading and trailing whitespace when xml:space is preserve', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:xml="http://www.w3.org/XML/1998/namespace">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t xml:space="preserve">  Both sides  </w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      // Both leading and trailing spaces should be converted to &nbsp; for proper rendering
+      expect(result.html).toBe('<p><span>&nbsp;&nbsp;Both sides&nbsp;&nbsp;</span></p>');
+      expect(result.plainText).toBe('  Both sides  ');
+    });
+
+    it('should not convert whitespace to nbsp when xml:space is not preserve', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>  Should be trimmed  </w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      // Without xml:space="preserve", spaces are left as-is (browser will handle trimming)
+      expect(result.html).toBe('<p><span>  Should be trimmed  </span></p>');
+      expect(result.plainText).toBe('  Should be trimmed  ');
+    });
+
+    it('should handle xml:space preserve with HTML special characters', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:xml="http://www.w3.org/XML/1998/namespace">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t xml:space="preserve">  &lt;tag&gt; &amp; "quotes"  </w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      // HTML entities should be escaped and leading/trailing spaces converted to &nbsp;
+      expect(result.html).toBe('<p><span>&nbsp;&nbsp;&lt;tag&gt; &amp; "quotes"&nbsp;&nbsp;</span></p>');
+      expect(result.plainText).toBe('  <tag> & "quotes"  ');
+    });
   });
 });
