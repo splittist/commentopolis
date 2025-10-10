@@ -1473,4 +1473,157 @@ describe('docxHtmlTransformer', () => {
       expect(result.html).toContain('<span class="numbering-text">2. </span>List 1 - Item 2');
     });
   });
+
+  describe('Line breaks in runs', () => {
+    it('should transform run with single line break', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>First line</w:t>
+                <w:br/>
+                <w:t>Second line</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span>First line<br>Second line</span></p>');
+      expect(result.plainText).toBe('First line\nSecond line');
+    });
+
+    it('should transform run with multiple line breaks', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>Line 1</w:t>
+                <w:br/>
+                <w:t>Line 2</w:t>
+                <w:br/>
+                <w:t>Line 3</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span>Line 1<br>Line 2<br>Line 3</span></p>');
+      expect(result.plainText).toBe('Line 1\nLine 2\nLine 3');
+    });
+
+    it('should transform run with line break and formatting', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:rPr>
+                  <w:b/>
+                </w:rPr>
+                <w:t>Bold line 1</w:t>
+                <w:br/>
+                <w:t>Bold line 2</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span style="font-weight: bold">Bold line 1<br>Bold line 2</span></p>');
+      expect(result.plainText).toBe('Bold line 1\nBold line 2');
+    });
+
+    it('should handle line break without namespace prefix', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>First</w:t>
+                <br/>
+                <w:t>Second</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span>First<br>Second</span></p>');
+      expect(result.plainText).toBe('First\nSecond');
+    });
+
+    it('should handle consecutive line breaks', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>Text</w:t>
+                <w:br/>
+                <w:br/>
+                <w:t>After double break</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span>Text<br><br>After double break</span></p>');
+      expect(result.plainText).toBe('Text\n\nAfter double break');
+    });
+
+    it('should handle line break at the beginning', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:br/>
+                <w:t>Text after break</w:t>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span><br>Text after break</span></p>');
+      expect(result.plainText).toBe('\nText after break');
+    });
+
+    it('should handle line break at the end', () => {
+      const xmlString = `<?xml version="1.0" encoding="UTF-8"?>
+        <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:body>
+            <w:p>
+              <w:r>
+                <w:t>Text before break</w:t>
+                <w:br/>
+              </w:r>
+            </w:p>
+          </w:body>
+        </w:document>`;
+      
+      const xmlDoc = createXmlDocument(xmlString);
+      const result = transformDocumentToHtml(xmlDoc);
+      
+      expect(result.html).toBe('<p><span>Text before break<br></span></p>');
+      expect(result.plainText).toBe('Text before break\n');
+    });
+  });
 });
