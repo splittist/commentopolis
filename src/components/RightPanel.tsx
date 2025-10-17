@@ -91,7 +91,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
     // Default tools and notes view
     return (
       <div className="p-4 space-y-4">
-        {/* Empty state - no comment selected */}
+        <div className="text-center text-gray-500 mt-8">
+          <p className="text-sm">Select a comment to view details</p>
+        </div>
       </div>
     );
   };
@@ -131,7 +133,9 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
     // Default expanded view with comment center and tools
     return (
       <div className="p-4 space-y-6">
-        {/* Empty state - no comment selected */}
+        <div className="text-center text-gray-500 mt-8">
+          <p className="text-sm">Select a comment to view details</p>
+        </div>
       </div>
     );
   };
