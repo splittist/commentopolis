@@ -22,11 +22,11 @@ export const Panel: React.FC<PanelProps> = ({ state, position, children, onToggl
       case 'minimized':
         return 'w-16 md:w-16'; // 60px equivalent
       case 'normal':
-        return 'w-64 md:w-72'; // 250-300px equivalent
+        return 'w-80 md:w-96'; // 320-384px equivalent
       case 'focused':
-        return 'w-96 md:w-[500px]'; // 400-500px equivalent
+        return 'w-[500px] md:w-[600px]'; // 500-600px equivalent
       default:
-        return 'w-64';
+        return 'w-80';
     }
   };
 

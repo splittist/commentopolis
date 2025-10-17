@@ -137,12 +137,12 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
 
         {/* Referenced Paragraph(s) */}
         {comment.paragraphIds && comment.paragraphIds.length > 0 && documentParagraphs.length > 0 ? (
-          <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+          <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-400">
             <div className="text-sm font-medium text-blue-800 mb-2">
               Referenced Paragraph{comment.paragraphIds.length > 1 ? 's' : ''}
             </div>
             <div 
-              className="text-sm text-blue-900 leading-relaxed"
+              className="text-sm text-gray-900 leading-relaxed"
               dangerouslySetInnerHTML={{ 
                 __html: comment.ranges && comment.ranges.length > 0
                   ? extractAndHighlightParagraphs(documentParagraphs, comment.paragraphIds, comment.ranges)
@@ -151,11 +151,11 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
             />
           </div>
         ) : comment.reference ? (
-          <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-400">
+          <div className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-400">
             <div className="text-sm font-medium text-blue-800 mb-2">
               Referenced Paragraph
             </div>
-            <div className="text-sm text-blue-700">
+            <div className="text-sm text-gray-900">
               {comment.reference}
             </div>
           </div>
