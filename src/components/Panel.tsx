@@ -66,11 +66,6 @@ export const Panel: React.FC<PanelProps> = ({ state, position, children, onToggl
             <span className="text-lg">
               {position === 'left' ? '☰' : '⚙'}
             </span>
-            {state !== 'minimized' && (
-              <span className="ml-2 text-sm font-medium capitalize">
-                {state}
-              </span>
-            )}
           </button>
         </div>
       )}
