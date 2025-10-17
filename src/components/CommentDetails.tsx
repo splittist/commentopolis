@@ -1,13 +1,16 @@
 import React from 'react';
-import type { DocumentComment } from '../types';
+import type { DocumentComment, DocumentFootnote } from '../types';
 import { extractParagraphsByIndex } from '../utils/paragraphExtractor';
 import { extractAndHighlightParagraphs } from '../utils/commentHighlighting';
+import { appendNotesToParagraphs } from '../utils/noteExtractor';
 
 interface CommentDetailsProps {
   comment: DocumentComment | null;
   getDocumentName?: (documentId: string) => string;
   getCommentById?: (commentId: string) => DocumentComment | null;
   documentParagraphs?: string[]; // Array of paragraph HTML strings
+  documentFootnotes?: DocumentFootnote[]; // Array of document footnotes
+  documentEndnotes?: DocumentFootnote[]; // Array of document endnotes
 }
 
 /**
@@ -17,7 +20,9 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
   comment, 
   getDocumentName,
   getCommentById,
-  documentParagraphs = []
+  documentParagraphs = [],
+  documentFootnotes = [],
+  documentEndnotes = []
 }) => {
   // Empty state when no comment is selected
   if (!comment) {
@@ -144,9 +149,19 @@ export const CommentDetails: React.FC<CommentDetailsProps> = ({
             <div 
               className="text-sm text-gray-900 leading-relaxed"
               dangerouslySetInnerHTML={{ 
-                __html: comment.ranges && comment.ranges.length > 0
-                  ? extractAndHighlightParagraphs(documentParagraphs, comment.paragraphIds, comment.ranges)
-                  : extractParagraphsByIndex(documentParagraphs, comment.paragraphIds)
+                __html: (() => {
+                  const paragraphsHtml = comment.ranges && comment.ranges.length > 0
+                    ? extractAndHighlightParagraphs(documentParagraphs, comment.paragraphIds, comment.ranges)
+                    : extractParagraphsByIndex(documentParagraphs, comment.paragraphIds);
+                  
+                  // Append footnotes/endnotes if any are referenced in the paragraphs
+                  return appendNotesToParagraphs(
+                    paragraphsHtml,
+                    documentFootnotes,
+                    documentEndnotes,
+                    comment.documentId
+                  );
+                })()
               }}
             />
           </div>

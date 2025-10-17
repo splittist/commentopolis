@@ -2,6 +2,7 @@ import React from 'react';
 import type { DocumentComment, UploadedDocument } from '../types';
 import { extractParagraphsByIndex } from '../utils/paragraphExtractor';
 import { extractAndHighlightParagraphs } from '../utils/commentHighlighting';
+import { appendNotesToParagraphs } from '../utils/noteExtractor';
 
 interface MultipleCommentDetailsProps {
   comments: DocumentComment[];
@@ -107,9 +108,19 @@ export const MultipleCommentDetails: React.FC<MultipleCommentDetailsProps> = ({
                   <div 
                     className="text-sm text-gray-900 leading-relaxed"
                     dangerouslySetInnerHTML={{ 
-                      __html: comment.ranges && comment.ranges.length > 0
-                        ? extractAndHighlightParagraphs(documentParagraphs, comment.paragraphIds, comment.ranges)
-                        : extractParagraphsByIndex(documentParagraphs, comment.paragraphIds)
+                      __html: (() => {
+                        const paragraphsHtml = comment.ranges && comment.ranges.length > 0
+                          ? extractAndHighlightParagraphs(documentParagraphs, comment.paragraphIds, comment.ranges)
+                          : extractParagraphsByIndex(documentParagraphs, comment.paragraphIds);
+                        
+                        // Append footnotes/endnotes if any are referenced in the paragraphs
+                        return appendNotesToParagraphs(
+                          paragraphsHtml,
+                          document?.footnotes || [],
+                          document?.endnotes || [],
+                          comment.documentId
+                        );
+                      })()
                     }}
                   />
                 </div>

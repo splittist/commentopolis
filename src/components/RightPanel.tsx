@@ -75,6 +75,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
       // Get the document paragraphs array for extracting referenced paragraphs
       const document = documents.find(d => d.id === selectedComment.documentId);
       const documentParagraphs = document?.transformedContent?.paragraphs || [];
+      const documentFootnotes = document?.footnotes || [];
+      const documentEndnotes = document?.endnotes || [];
       
       return (
         <div className="p-4">
@@ -83,6 +85,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
             getDocumentName={getDocumentName}
             getCommentById={getCommentById}
             documentParagraphs={documentParagraphs}
+            documentFootnotes={documentFootnotes}
+            documentEndnotes={documentEndnotes}
           />
         </div>
       );
@@ -117,6 +121,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
       // Get the document paragraphs array for extracting referenced paragraphs
       const document = documents.find(d => d.id === selectedComment.documentId);
       const documentParagraphs = document?.transformedContent?.paragraphs || [];
+      const documentFootnotes = document?.footnotes || [];
+      const documentEndnotes = document?.endnotes || [];
       
       return (
         <div className="p-4">
@@ -125,6 +131,8 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
             getDocumentName={getDocumentName}
             getCommentById={getCommentById}
             documentParagraphs={documentParagraphs}
+            documentFootnotes={documentFootnotes}
+            documentEndnotes={documentEndnotes}
           />
         </div>
       );
