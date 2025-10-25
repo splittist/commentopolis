@@ -9,3 +9,4 @@ export { CommentList } from './CommentList';
 export { CommentDetails } from './CommentDetails';
 export { MultipleCommentDetails } from './MultipleCommentDetails';
 export { CommentFilters } from './CommentFilters';
+export { ProjectManager } from './ProjectManager';

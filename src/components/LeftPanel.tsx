@@ -4,6 +4,7 @@ import { Panel } from './Panel';
 import { DocumentUpload } from './DocumentUpload';
 import { DocumentList } from './DocumentList';
 import { CommentFilters } from './CommentFilters';
+import { ProjectManager } from './ProjectManager';
 import { useDocumentContext } from '../hooks/useDocumentContext';
 
 interface LeftPanelProps {
@@ -49,6 +50,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
         </h1>
       </div>
       
+      {/* Project Management */}
+      <ProjectManager />
+      
       <div className="space-y-2">
         <h3 className="font-semibold text-gray-800">Documents</h3>
         <DocumentUpload className="mb-4" />
@@ -78,6 +82,9 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
           Commentopolis
         </h1>
       </div>
+      
+      {/* Project Management */}
+      <ProjectManager />
       
       <div>
         <h2 className="text-xl font-bold text-gray-800 mb-4">Document Center</h2>
