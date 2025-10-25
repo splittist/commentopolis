@@ -158,6 +158,11 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
     }, 100);
   };
 
+  // Check if a comment is linked by any meta-comment
+  const isCommentLinked = (commentId: string): boolean => {
+    return metaComments.some(mc => mc.linkedComments.includes(commentId));
+  };
+
   // Group comments by document if showing multiple documents (only for word comments)
   const groupedComments = useMemo(() => {
     // Separate word comments and meta-comments
@@ -296,6 +301,11 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                                 {wordComment.children.length} {wordComment.children.length === 1 ? 'reply' : 'replies'}
                               </span>
                             )}
+                            {isCommentLinked(wordComment.id) && (
+                              <span className="px-1.5 py-0.5 bg-orange-100 text-orange-800 text-xs font-medium rounded" title="Linked by meta-comment">
+                                🔗 Linked
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-gray-500">{formatDate(wordComment.date)}</div>
                         </div>
@@ -372,6 +382,25 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                         ✓ Selected for review {selectedCommentIds.length > 1 && `(${selectedCommentIds.indexOf(wordComment.id) + 1} of ${selectedCommentIds.length})`}
                       </div>
                     )}
+
+                    {/* Action buttons */}
+                    <div className="mt-3 pt-3 border-t border-gray-200 flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCommentClick(wordComment.id, e);
+                        }}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded transition-colors"
+                        title={selectedCommentIds.includes(wordComment.id) ? "Deselect comment" : "Select comment"}
+                      >
+                        {selectedCommentIds.includes(wordComment.id) ? '✓ Selected' : '+ Select'}
+                      </button>
+                      {isCommentLinked(wordComment.id) && (
+                        <span className="px-3 py-1 text-xs bg-orange-50 text-orange-700 rounded border border-orange-200">
+                          🔗 Used in synthesis
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -397,6 +426,8 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                 onClick={handleCommentClick}
                 onUpdate={updateMetaComment}
                 onDelete={removeMetaComment}
+                getCommentById={getCommentById}
+                onNavigateToComment={navigateToComment}
               />
             ))}
           </div>
