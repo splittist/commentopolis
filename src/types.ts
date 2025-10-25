@@ -137,3 +137,23 @@ export interface DocumentStateManager {
   addDemoDocuments?: (documents: UploadedDocument[]) => void;
   removeDemoDocuments?: () => void;
 }
+
+// Project persistence types
+export interface Project {
+  id: string;
+  name: string;
+  created: Date;
+  lastModified: Date;
+  documents: DocumentMetadata[];
+}
+
+export interface DocumentMetadata {
+  id: string;
+  name: string;
+  fileHash: string;
+  uploadDate: Date;
+  wordComments: DocumentComment[];
+  footnotes?: DocumentFootnote[];
+  endnotes?: DocumentFootnote[];
+  textContent?: string; // For search/anchoring
+}
