@@ -8,7 +8,7 @@ interface ProjectManagerProps {
 }
 
 export const ProjectManager: React.FC<ProjectManagerProps> = ({ className = '' }) => {
-  const { documents, comments } = useDocumentContext();
+  const { documents, comments, metaComments, reportConfigs } = useDocumentContext();
   const { 
     saveProject, 
     loadProject, 
@@ -52,7 +52,7 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({ className = '' }
     }
 
     try {
-      await saveProject(projectName.trim(), documents);
+      await saveProject(projectName.trim(), documents, metaComments, reportConfigs);
       setProjectName('');
       setShowSaveDialog(false);
     } catch (error) {
