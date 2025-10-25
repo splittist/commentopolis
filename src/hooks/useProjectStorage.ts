@@ -16,7 +16,7 @@ import {
 import { hashFile, compareHashes } from '../utils/fileHash';
 
 export interface ProjectStorageHook {
-  saveProject: (name: string, documents: UploadedDocument[]) => Promise<string>;
+  saveProject: (name: string, documents: UploadedDocument[], projectId?: string) => Promise<string>;
   loadProject: (id: string) => Promise<Project | null>;
   listProjects: () => Promise<Project[]>;
   deleteProject: (id: string) => Promise<void>;
@@ -67,10 +67,14 @@ export const useProjectStorage = (): ProjectStorageHook => {
 
   /**
    * Save current project state to IndexedDB
+   * @param name Project name
+   * @param documents Documents to save
+   * @param projectId Optional project ID for updates (generates new ID if not provided)
    */
   const saveProject = useCallback(async (
     name: string, 
-    documents: UploadedDocument[]
+    documents: UploadedDocument[],
+    projectId?: string
   ): Promise<string> => {
     try {
       // Create document metadata for all documents
@@ -78,11 +82,12 @@ export const useProjectStorage = (): ProjectStorageHook => {
         documents.map(doc => createDocumentMetadata(doc))
       );
 
+      const now = new Date();
       const project: Project = {
-        id: crypto.randomUUID(),
+        id: projectId || crypto.randomUUID(),
         name,
-        created: new Date(),
-        lastModified: new Date(),
+        created: projectId ? now : now, // Keep original if updating (would need to load it)
+        lastModified: now,
         documents: documentMetadata
       };
 

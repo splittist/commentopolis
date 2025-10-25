@@ -41,6 +41,51 @@ export function initDB(): Promise<IDBDatabase> {
 }
 
 /**
+ * Type for stored project data in IndexedDB
+ */
+interface StoredProject {
+  id: string;
+  name: string;
+  created: string;
+  lastModified: string;
+  documents: Array<{
+    id: string;
+    name: string;
+    fileHash: string;
+    uploadDate: string;
+    wordComments: Array<{
+      id: string;
+      author: string;
+      date: string;
+      plainText: string;
+      content: string;
+      documentId: string;
+      [key: string]: unknown;
+    }>;
+    [key: string]: unknown;
+  }>;
+}
+
+/**
+ * Convert stored project to runtime Project type
+ */
+function deserializeProject(stored: StoredProject): Project {
+  return {
+    ...stored,
+    created: new Date(stored.created),
+    lastModified: new Date(stored.lastModified),
+    documents: stored.documents.map((doc) => ({
+      ...doc,
+      uploadDate: new Date(doc.uploadDate),
+      wordComments: doc.wordComments.map((comment) => ({
+        ...comment,
+        date: new Date(comment.date)
+      }))
+    }))
+  };
+}
+
+/**
  * Get a database connection
  */
 async function getDB(): Promise<IDBDatabase> {
@@ -101,43 +146,7 @@ export async function loadProject(id: string): Promise<Project | null> {
     
     request.onsuccess = () => {
       if (request.result) {
-        // Convert ISO strings back to Date objects
-        const storedData = request.result as {
-          id: string;
-          name: string;
-          created: string;
-          lastModified: string;
-          documents: Array<{
-            id: string;
-            name: string;
-            fileHash: string;
-            uploadDate: string;
-            wordComments: Array<{
-              id: string;
-              author: string;
-              date: string;
-              plainText: string;
-              content: string;
-              documentId: string;
-              [key: string]: unknown;
-            }>;
-            [key: string]: unknown;
-          }>;
-        };
-        
-        const project = {
-          ...storedData,
-          created: new Date(storedData.created),
-          lastModified: new Date(storedData.lastModified),
-          documents: storedData.documents.map((doc) => ({
-            ...doc,
-            uploadDate: new Date(doc.uploadDate),
-            wordComments: doc.wordComments.map((comment) => ({
-              ...comment,
-              date: new Date(comment.date)
-            }))
-          }))
-        };
+        const project = deserializeProject(request.result as StoredProject);
         resolve(project);
       } else {
         resolve(null);
@@ -167,42 +176,8 @@ export async function listProjects(): Promise<Project[]> {
     
     request.onsuccess = () => {
       // Convert ISO strings back to Date objects
-      const results = request.result as Array<{
-        id: string;
-        name: string;
-        created: string;
-        lastModified: string;
-        documents: Array<{
-          id: string;
-          name: string;
-          fileHash: string;
-          uploadDate: string;
-          wordComments: Array<{
-            id: string;
-            author: string;
-            date: string;
-            plainText: string;
-            content: string;
-            documentId: string;
-            [key: string]: unknown;
-          }>;
-          [key: string]: unknown;
-        }>;
-      }>;
-      
-      const projects = results.map((proj) => ({
-        ...proj,
-        created: new Date(proj.created),
-        lastModified: new Date(proj.lastModified),
-        documents: proj.documents.map((doc) => ({
-          ...doc,
-          uploadDate: new Date(doc.uploadDate),
-          wordComments: doc.wordComments.map((comment) => ({
-            ...comment,
-            date: new Date(comment.date)
-          }))
-        }))
-      }));
+      const results = request.result as StoredProject[];
+      const projects = results.map(deserializeProject);
       resolve(projects);
     };
     
@@ -252,41 +227,20 @@ export function exportProjectToJSON(project: Project): string {
  * Import a project from JSON
  */
 export function importProjectFromJSON(json: string): Project {
-  const data = JSON.parse(json) as {
-    id: string;
-    name: string;
-    created: string;
-    lastModified: string;
-    documents: Array<{
-      id: string;
-      name: string;
-      fileHash: string;
-      uploadDate: string;
-      wordComments: Array<{
-        id: string;
-        author: string;
-        date: string;
-        plainText: string;
-        content: string;
-        documentId: string;
-        [key: string]: unknown;
-      }>;
-      [key: string]: unknown;
-    }>;
-  };
-  
-  // Convert date strings to Date objects
-  return {
-    ...data,
-    created: new Date(data.created),
-    lastModified: new Date(data.lastModified),
-    documents: data.documents.map((doc) => ({
-      ...doc,
-      uploadDate: new Date(doc.uploadDate),
-      wordComments: doc.wordComments.map((comment) => ({
-        ...comment,
-        date: new Date(comment.date)
-      }))
-    }))
-  };
+  try {
+    const data = JSON.parse(json) as StoredProject;
+    
+    // Validate required fields
+    if (!data.id || !data.name || !data.created || !data.lastModified || !Array.isArray(data.documents)) {
+      throw new Error('Invalid project format: missing required fields');
+    }
+    
+    // Convert to Project type
+    return deserializeProject(data);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error('Invalid JSON format');
+    }
+    throw error;
+  }
 }

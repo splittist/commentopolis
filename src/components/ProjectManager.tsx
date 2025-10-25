@@ -64,8 +64,10 @@ export const ProjectManager: React.FC<ProjectManagerProps> = ({ className = '' }
     try {
       const project = await loadProject(projectId);
       if (project) {
-        // Note: In a full implementation, this would restore the full document state
-        // For now, we just show success message
+        // Note: Full project restoration requires re-uploading actual .docx files
+        // since File objects cannot be serialized to IndexedDB.
+        // This limitation is documented in the PR description.
+        // Future enhancement: Show project metadata and prompt user to upload matching files
         setShowLoadDialog(false);
       }
     } catch (error) {
