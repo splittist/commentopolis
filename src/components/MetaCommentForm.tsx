@@ -1,19 +1,27 @@
 import React, { useState } from 'react';
-import type { MetaComment } from '../types';
+import type { MetaComment, DocumentComment } from '../types';
 
 interface MetaCommentFormProps {
   onSubmit: (metaComment: Omit<MetaComment, 'id' | 'created'>) => void;
   onCancel: () => void;
+  linkedComments?: string[]; // Pre-linked comment IDs
+  getCommentById?: (id: string) => (DocumentComment | MetaComment) | null; // Function to get comment details
 }
 
 /**
  * Form component for creating new meta-comments
  */
-export const MetaCommentForm: React.FC<MetaCommentFormProps> = ({ onSubmit, onCancel }) => {
+export const MetaCommentForm: React.FC<MetaCommentFormProps> = ({ 
+  onSubmit, 
+  onCancel, 
+  linkedComments = [], 
+  getCommentById 
+}) => {
   const [type, setType] = useState<MetaComment['type']>('synthesis');
   const [text, setText] = useState('');
   const [author, setAuthor] = useState('Current User');
   const [includeInReport, setIncludeInReport] = useState(false);
+  const [selectedLinkedComments, setSelectedLinkedComments] = useState<string[]>(linkedComments);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +34,7 @@ export const MetaCommentForm: React.FC<MetaCommentFormProps> = ({ onSubmit, onCa
       type,
       text: text.trim(),
       author,
-      linkedComments: [],
+      linkedComments: selectedLinkedComments,
       tags: [], // Will be extracted from text
       includeInReport
     });
@@ -34,6 +42,26 @@ export const MetaCommentForm: React.FC<MetaCommentFormProps> = ({ onSubmit, onCa
     // Reset form
     setText('');
     setIncludeInReport(false);
+  };
+
+  const handleRemoveLinkedComment = (commentId: string) => {
+    setSelectedLinkedComments(prev => prev.filter(id => id !== commentId));
+  };
+
+  const getCommentPreview = (commentId: string): { author: string; text: string } | null => {
+    if (!getCommentById) return null;
+    
+    const comment = getCommentById(commentId);
+    if (!comment) return null;
+    
+    // Check if it's a MetaComment or DocumentComment
+    if ('plainText' in comment) {
+      // DocumentComment
+      return { author: comment.author, text: comment.plainText };
+    } else {
+      // MetaComment
+      return { author: comment.author, text: comment.text };
+    }
   };
 
   return (
@@ -88,6 +116,42 @@ export const MetaCommentForm: React.FC<MetaCommentFormProps> = ({ onSubmit, onCa
           required
         />
       </div>
+
+      {/* Linked Comments Section */}
+      {selectedLinkedComments.length > 0 && (
+        <div className="mb-3">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Linked Comments ({selectedLinkedComments.length})
+          </label>
+          <div className="space-y-2 max-h-32 overflow-y-auto border border-purple-200 rounded-lg p-2 bg-white">
+            {selectedLinkedComments.map(commentId => {
+              const preview = getCommentPreview(commentId);
+              return (
+                <div
+                  key={commentId}
+                  className="flex items-start justify-between bg-purple-50 p-2 rounded text-xs"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-purple-800">{preview?.author || 'Unknown'}</div>
+                    <div className="text-purple-600 truncate">
+                      {preview?.text.slice(0, 60) || commentId}
+                      {preview && preview.text.length > 60 ? '...' : ''}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveLinkedComment(commentId)}
+                    className="ml-2 px-2 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded transition-colors flex-shrink-0"
+                    title="Remove link"
+                  >
+                    ✕
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="mb-4">
         <label className="flex items-center gap-2 cursor-pointer">

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { MetaComment } from '../types';
+import type { MetaComment, DocumentComment } from '../types';
 
 interface MetaCommentItemProps {
   metaComment: MetaComment;
@@ -7,6 +7,8 @@ interface MetaCommentItemProps {
   onClick: (id: string, event: React.MouseEvent) => void;
   onUpdate?: (id: string, updates: Partial<MetaComment>) => void;
   onDelete?: (id: string) => void;
+  getCommentById?: (id: string) => (DocumentComment | MetaComment) | null; // Function to get linked comment details
+  onNavigateToComment?: (id: string, event: React.MouseEvent) => void; // Function to navigate to a linked comment
 }
 
 const typeIcons: Record<MetaComment['type'], string> = {
@@ -31,7 +33,9 @@ export const MetaCommentItem: React.FC<MetaCommentItemProps> = ({
   isSelected,
   onClick,
   onUpdate,
-  onDelete
+  onDelete,
+  getCommentById,
+  onNavigateToComment
 }) => {
   const formatDate = (date: Date): string => {
     return new Intl.DateTimeFormat('en-US', {
@@ -54,6 +58,30 @@ export const MetaCommentItem: React.FC<MetaCommentItemProps> = ({
     e.stopPropagation();
     if (onDelete && confirm('Delete this meta-comment?')) {
       onDelete(metaComment.id);
+    }
+  };
+
+  const handleUnlink = (e: React.MouseEvent, commentId: string) => {
+    e.stopPropagation();
+    if (onUpdate) {
+      const updatedLinkedComments = metaComment.linkedComments.filter(id => id !== commentId);
+      onUpdate(metaComment.id, { linkedComments: updatedLinkedComments });
+    }
+  };
+
+  const getLinkedCommentPreview = (commentId: string): { author: string; text: string } | null => {
+    if (!getCommentById) return null;
+    
+    const comment = getCommentById(commentId);
+    if (!comment) return null;
+    
+    // Check if it's a MetaComment or DocumentComment
+    if ('plainText' in comment) {
+      // DocumentComment
+      return { author: comment.author, text: comment.plainText };
+    } else {
+      // MetaComment
+      return { author: comment.author, text: comment.text };
     }
   };
 
@@ -114,8 +142,52 @@ export const MetaCommentItem: React.FC<MetaCommentItemProps> = ({
 
         {/* Linked comments indicator */}
         {metaComment.linkedComments.length > 0 && (
-          <div className="text-xs text-purple-600 mb-2">
-            🔗 Links to {metaComment.linkedComments.length} comment{metaComment.linkedComments.length !== 1 ? 's' : ''}
+          <div className="mb-2">
+            <div className="text-xs font-medium text-purple-700 mb-2">
+              🔗 Linked to {metaComment.linkedComments.length} comment{metaComment.linkedComments.length !== 1 ? 's' : ''}:
+            </div>
+            <div className="space-y-1 max-h-32 overflow-y-auto">
+              {metaComment.linkedComments.map(commentId => {
+                const preview = getLinkedCommentPreview(commentId);
+                return (
+                  <div
+                    key={commentId}
+                    className="flex items-start justify-between bg-white p-2 rounded border border-purple-200"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-gray-800">{preview?.author || 'Unknown'}</div>
+                      <div className="text-xs text-gray-600 truncate">
+                        {preview?.text.slice(0, 80) || commentId}
+                        {preview && preview.text.length > 80 ? '...' : ''}
+                      </div>
+                    </div>
+                    <div className="flex gap-1 ml-2 flex-shrink-0">
+                      {onNavigateToComment && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onNavigateToComment(commentId, e);
+                          }}
+                          className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+                          title="Go to comment"
+                        >
+                          →
+                        </button>
+                      )}
+                      {onUpdate && (
+                        <button
+                          onClick={(e) => handleUnlink(e, commentId)}
+                          className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                          title="Unlink comment"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

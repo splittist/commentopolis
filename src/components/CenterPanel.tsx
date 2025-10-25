@@ -10,7 +10,7 @@ import { useDocumentContext } from '../hooks/useDocumentContext';
  * Center Panel component - main content area
  */
 export const CenterPanel: React.FC = () => {
-  const { documents, activeDocumentId, addMetaComment } = useDocumentContext();
+  const { documents, activeDocumentId, comments, metaComments, selectedCommentIds, addMetaComment, clearSelectedComments } = useDocumentContext();
   const [showDemo, setShowDemo] = useState(false);
   const [showMetaCommentForm, setShowMetaCommentForm] = useState(false);
 
@@ -25,6 +25,25 @@ export const CenterPanel: React.FC = () => {
   // Show document content if there's an active document with transformed content
   const showDocumentContent = activeDocument && activeDocument.transformedContent;
 
+  // Helper to get comment by ID (combines word comments and meta-comments)
+  const getCommentById = (id: string) => {
+    const wordComment = comments.find(c => c.id === id);
+    if (wordComment) return wordComment;
+    
+    const metaComment = metaComments.find(mc => mc.id === id);
+    return metaComment || null;
+  };
+
+  const handleCreateSynthesis = () => {
+    setShowMetaCommentForm(true);
+  };
+
+  const handleMetaCommentSubmit = (metaComment: Omit<import('../types').MetaComment, 'id' | 'created'>) => {
+    addMetaComment(metaComment);
+    setShowMetaCommentForm(false);
+    clearSelectedComments();
+  };
+
   return (
     <Panel state="normal" position="center">
       <div className="p-8 h-full flex flex-col">
@@ -35,9 +54,21 @@ export const CenterPanel: React.FC = () => {
               <DocumentViewer document={activeDocument} />
             ) : showComments ? (
               <>
-                {/* Add Meta-Comment Button */}
-                {!showMetaCommentForm && (
-                  <div className="mb-4">
+                {/* Action buttons */}
+                <div className="mb-4 flex gap-2">
+                  {/* Create synthesis from selected comments */}
+                  {selectedCommentIds.length > 0 && !showMetaCommentForm && (
+                    <button
+                      onClick={handleCreateSynthesis}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+                    >
+                      <span className="text-lg">💡</span>
+                      Create Synthesis from {selectedCommentIds.length} Selected
+                    </button>
+                  )}
+                  
+                  {/* Add Meta-Comment Button */}
+                  {!showMetaCommentForm && selectedCommentIds.length === 0 && (
                     <button
                       onClick={() => setShowMetaCommentForm(true)}
                       className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center gap-2"
@@ -45,17 +76,16 @@ export const CenterPanel: React.FC = () => {
                       <span className="text-lg">✨</span>
                       Create Meta-Comment
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
                 
                 {/* Meta-Comment Form */}
                 {showMetaCommentForm && (
                   <MetaCommentForm
-                    onSubmit={(metaComment) => {
-                      addMetaComment(metaComment);
-                      setShowMetaCommentForm(false);
-                    }}
+                    onSubmit={handleMetaCommentSubmit}
                     onCancel={() => setShowMetaCommentForm(false)}
+                    linkedComments={selectedCommentIds}
+                    getCommentById={getCommentById}
                   />
                 )}
                 

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MetaCommentForm } from './MetaCommentForm';
+import type { DocumentComment, MetaComment } from '../types';
 
 describe('MetaCommentForm', () => {
   it('should render form with all fields', () => {
@@ -11,7 +12,7 @@ describe('MetaCommentForm', () => {
       />
     );
 
-    expect(screen.getByText('Create Meta-Comment')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Create Meta-Comment/i })).toBeInTheDocument();
     expect(screen.getByText('Type')).toBeInTheDocument();
     expect(screen.getByText('Comment Text')).toBeInTheDocument();
     expect(screen.getByText('Author')).toBeInTheDocument();
@@ -60,7 +61,7 @@ describe('MetaCommentForm', () => {
     );
 
     const textArea = screen.getByPlaceholderText(/Enter your meta-comment/);
-    const submitButton = screen.getByText('Create Meta-Comment');
+    const submitButton = screen.getByRole('button', { name: /Create Meta-Comment/i });
 
     fireEvent.change(textArea, { target: { value: 'Test meta-comment #test' } });
     fireEvent.click(submitButton);
@@ -119,5 +120,141 @@ describe('MetaCommentForm', () => {
 
     fireEvent.click(checkbox);
     expect(checkbox.checked).toBe(true);
+  });
+
+  it('should display linked comments when provided', () => {
+    const mockComment: DocumentComment = {
+      id: 'comment-1',
+      author: 'Test Author',
+      plainText: 'This is a test comment',
+      content: '<p>This is a test comment</p>',
+      date: new Date(),
+      documentId: 'doc-1'
+    };
+
+    const getCommentById = vi.fn((id: string) => {
+      if (id === 'comment-1') return mockComment;
+      return null;
+    });
+
+    render(
+      <MetaCommentForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        linkedComments={['comment-1']}
+        getCommentById={getCommentById}
+      />
+    );
+
+    expect(screen.getByText('Linked Comments (1)')).toBeInTheDocument();
+    expect(screen.getByText('Test Author')).toBeInTheDocument();
+    expect(screen.getByText(/This is a test comment/)).toBeInTheDocument();
+  });
+
+  it('should allow removing linked comments', () => {
+    const mockComment: DocumentComment = {
+      id: 'comment-1',
+      author: 'Test Author',
+      plainText: 'This is a test comment',
+      content: '<p>This is a test comment</p>',
+      date: new Date(),
+      documentId: 'doc-1'
+    };
+
+    const getCommentById = vi.fn((id: string) => {
+      if (id === 'comment-1') return mockComment;
+      return null;
+    });
+
+    const handleSubmit = vi.fn();
+
+    render(
+      <MetaCommentForm
+        onSubmit={handleSubmit}
+        onCancel={vi.fn()}
+        linkedComments={['comment-1']}
+        getCommentById={getCommentById}
+      />
+    );
+
+    // Should show linked comment
+    expect(screen.getByText('Linked Comments (1)')).toBeInTheDocument();
+
+    // Click remove button
+    const removeButton = screen.getByTitle('Remove link');
+    fireEvent.click(removeButton);
+
+    // Linked comments section should be removed
+    expect(screen.queryByText('Linked Comments (1)')).not.toBeInTheDocument();
+  });
+
+  it('should submit with linked comments', () => {
+    const mockComment: DocumentComment = {
+      id: 'comment-1',
+      author: 'Test Author',
+      plainText: 'This is a test comment',
+      content: '<p>This is a test comment</p>',
+      date: new Date(),
+      documentId: 'doc-1'
+    };
+
+    const getCommentById = vi.fn((id: string) => {
+      if (id === 'comment-1') return mockComment;
+      return null;
+    });
+
+    const handleSubmit = vi.fn();
+
+    render(
+      <MetaCommentForm
+        onSubmit={handleSubmit}
+        onCancel={vi.fn()}
+        linkedComments={['comment-1']}
+        getCommentById={getCommentById}
+      />
+    );
+
+    const textArea = screen.getByPlaceholderText(/Enter your meta-comment/);
+    const submitButton = screen.getByRole('button', { name: /Create Meta-Comment/i });
+
+    fireEvent.change(textArea, { target: { value: 'Test synthesis' } });
+    fireEvent.click(submitButton);
+
+    expect(handleSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        linkedComments: ['comment-1']
+      })
+    );
+  });
+
+  it('should display meta-comment in linked comments', () => {
+    const mockMetaComment: MetaComment = {
+      id: 'meta-1',
+      type: 'synthesis',
+      text: 'This is a meta comment',
+      author: 'Meta Author',
+      created: new Date(),
+      linkedComments: [],
+      tags: [],
+      includeInReport: false
+    };
+
+    const getCommentById = vi.fn((id: string) => {
+      if (id === 'meta-1') return mockMetaComment;
+      return null;
+    });
+
+    render(
+      <MetaCommentForm
+        onSubmit={vi.fn()}
+        onCancel={vi.fn()}
+        linkedComments={['meta-1']}
+        getCommentById={getCommentById}
+      />
+    );
+
+    expect(screen.getByText('Linked Comments (1)')).toBeInTheDocument();
+    expect(screen.getByText('Meta Author')).toBeInTheDocument();
+    expect(screen.getByText(/This is a meta comment/)).toBeInTheDocument();
   });
 });
