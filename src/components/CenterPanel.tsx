@@ -3,14 +3,16 @@ import { Panel } from './Panel';
 import { CommentList } from './CommentList';
 import { CommentListDemo } from './CommentListDemo';
 import { DocumentViewer } from './DocumentViewer';
+import { MetaCommentForm } from './MetaCommentForm';
 import { useDocumentContext } from '../hooks/useDocumentContext';
 
 /**
  * Center Panel component - main content area
  */
 export const CenterPanel: React.FC = () => {
-  const { documents, activeDocumentId } = useDocumentContext();
+  const { documents, activeDocumentId, addMetaComment } = useDocumentContext();
   const [showDemo, setShowDemo] = useState(false);
+  const [showMetaCommentForm, setShowMetaCommentForm] = useState(false);
 
   // Show CommentList if there are documents uploaded, otherwise show welcome
   const showComments = documents.length > 0;
@@ -32,7 +34,34 @@ export const CenterPanel: React.FC = () => {
             {showDocumentContent && activeDocument ? (
               <DocumentViewer document={activeDocument} />
             ) : showComments ? (
-              <CommentList />
+              <>
+                {/* Add Meta-Comment Button */}
+                {!showMetaCommentForm && (
+                  <div className="mb-4">
+                    <button
+                      onClick={() => setShowMetaCommentForm(true)}
+                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium flex items-center gap-2"
+                    >
+                      <span className="text-lg">✨</span>
+                      Create Meta-Comment
+                    </button>
+                  </div>
+                )}
+                
+                {/* Meta-Comment Form */}
+                {showMetaCommentForm && (
+                  <MetaCommentForm
+                    onSubmit={(metaComment) => {
+                      addMetaComment(metaComment);
+                      setShowMetaCommentForm(false);
+                    }}
+                    onCancel={() => setShowMetaCommentForm(false)}
+                  />
+                )}
+                
+                {/* Comment List */}
+                <CommentList />
+              </>
             ) : showDemo ? (
               <CommentListDemo />
             ) : (

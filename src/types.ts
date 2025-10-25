@@ -114,6 +114,7 @@ export interface DocumentStateManager {
   activeDocumentId: string | null; // Keep for backward compatibility, will be deprecated
   selectedDocumentIds: string[]; // New: array of selected document IDs
   comments: DocumentComment[]; // All comments from all documents
+  metaComments: MetaComment[]; // All meta-comments across all projects
   selectedCommentId: string | null; // Currently selected comment for right panel (backward compatible)
   selectedCommentIds: string[]; // New: array of selected comment IDs for multi-selection
   addDocument: (file: File) => void;
@@ -131,6 +132,10 @@ export interface DocumentStateManager {
   selectAllDocuments: () => void;
   deselectAllDocuments: () => void;
   toggleDocumentSelection: (id: string) => void;
+  // Meta-comment management methods
+  addMetaComment: (metaComment: Omit<MetaComment, 'id' | 'created'>) => void;
+  updateMetaComment: (id: string, updates: Partial<MetaComment>) => void;
+  removeMetaComment: (id: string) => void;
   // Demo support methods
   addDemoComments?: (comments: DocumentComment[]) => void;
   removeDemoComments?: () => void;
@@ -145,6 +150,7 @@ export interface Project {
   created: Date;
   lastModified: Date;
   documents: DocumentMetadata[];
+  metaComments?: MetaComment[]; // Meta-comments for this project
 }
 
 export interface DocumentMetadata {
@@ -156,4 +162,17 @@ export interface DocumentMetadata {
   footnotes?: DocumentFootnote[];
   endnotes?: DocumentFootnote[];
   textContent?: string; // For search/anchoring
+}
+
+// Meta-comment data for synthesis and analysis
+export interface MetaComment {
+  id: string; // "meta-{uuid}"
+  type: 'synthesis' | 'link' | 'question' | 'observation';
+  text: string;
+  author: string; // Current user
+  created: Date;
+  modified?: Date;
+  linkedComments: string[]; // Array of comment IDs (word or meta)
+  tags: string[]; // Extracted hashtags
+  includeInReport: boolean;
 }
