@@ -10,3 +10,5 @@ export { CommentDetails } from './CommentDetails';
 export { MultipleCommentDetails } from './MultipleCommentDetails';
 export { CommentFilters } from './CommentFilters';
 export { ProjectManager } from './ProjectManager';
+export { MetaCommentForm } from './MetaCommentForm';
+export { MetaCommentItem } from './MetaCommentItem';

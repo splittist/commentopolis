@@ -1,9 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import type { DocumentComment } from '../types';
+import type { DocumentComment, MetaComment } from '../types';
 import { useDocumentContext } from '../hooks/useDocumentContext';
 import { useCommentFilterContext } from '../hooks/useCommentFilterContext';
+import { MetaCommentItem } from './MetaCommentItem';
 
 export type SortOption = 'document-order' | 'date-desc' | 'date-asc' | 'author-asc' | 'author-desc';
+
+// Combined type for word comments and meta-comments
+type CombinedComment = (DocumentComment | MetaComment) & { commentType: 'word' | 'meta' };
 
 interface CommentListProps {
   className?: string;
@@ -13,7 +17,7 @@ interface CommentListProps {
  * CommentList component for displaying extracted comments from documents
  */
 export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
-  const { documents, activeDocumentId, selectedDocumentIds, comments, selectedCommentIds, toggleCommentSelection } = useDocumentContext();
+  const { documents, activeDocumentId, selectedDocumentIds, comments, metaComments, selectedCommentIds, toggleCommentSelection, updateMetaComment, removeMetaComment } = useDocumentContext();
   const { getFilteredComments } = useCommentFilterContext();
   const [sortBy, setSortBy] = useState<SortOption>('document-order');
 
@@ -38,38 +42,64 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
     return getFilteredComments(selectedComments);
   }, [selectedComments, getFilteredComments]);
 
+  // Combine word comments and meta-comments
+  const combinedComments = useMemo(() => {
+    const wordCommentsWithType: CombinedComment[] = filteredComments.map(c => ({ ...c, commentType: 'word' as const }));
+    const metaCommentsWithType: CombinedComment[] = metaComments.map(mc => ({ ...mc, commentType: 'meta' as const }));
+    return [...wordCommentsWithType, ...metaCommentsWithType];
+  }, [filteredComments, metaComments]);
+
   // Sort comments based on selected option
   const sortedComments = useMemo(() => {
-    const sorted = [...filteredComments];
+    const sorted = [...combinedComments];
     
     switch (sortBy) {
       case 'document-order':
         // Sort by comment ID which represents document order
-        // Comment IDs follow pattern: documentId-sequentialNumber
+        // Meta-comments go at the end
         return sorted.sort((a, b) => {
-          // Extract the numeric part of the comment ID (after the last hyphen)
-          const getIdNumber = (id: string) => {
-            const parts = id.split('-');
-            const lastPart = parts[parts.length - 1];
-            const num = parseInt(lastPart, 10);
-            return isNaN(num) ? 0 : num;
-          };
+          // Meta-comments after word comments
+          if (a.commentType === 'meta' && b.commentType !== 'meta') return 1;
+          if (a.commentType !== 'meta' && b.commentType === 'meta') return -1;
           
-          const numA = getIdNumber(a.id);
-          const numB = getIdNumber(b.id);
-          
-          // If both have valid numbers, sort by them
-          if (numA !== numB) {
-            return numA - numB;
+          if (a.commentType === 'word' && b.commentType === 'word') {
+            // Extract the numeric part of the comment ID (after the last hyphen)
+            const getIdNumber = (id: string) => {
+              const parts = id.split('-');
+              const lastPart = parts[parts.length - 1];
+              const num = parseInt(lastPart, 10);
+              return isNaN(num) ? 0 : num;
+            };
+            
+            const numA = getIdNumber(a.id);
+            const numB = getIdNumber(b.id);
+            
+            // If both have valid numbers, sort by them
+            if (numA !== numB) {
+              return numA - numB;
+            }
+            
+            // Fall back to string comparison if numbers are equal
+            return a.id.localeCompare(b.id);
           }
           
-          // Fall back to string comparison if numbers are equal
-          return a.id.localeCompare(b.id);
+          // Both are meta-comments, sort by created date
+          const dateA = a.commentType === 'meta' ? a.created : (a as DocumentComment).date;
+          const dateB = b.commentType === 'meta' ? b.created : (b as DocumentComment).date;
+          return new Date(dateA).getTime() - new Date(dateB).getTime();
         });
       case 'date-desc':
-        return sorted.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return sorted.sort((a, b) => {
+          const dateA = a.commentType === 'meta' ? a.created : (a as DocumentComment).date;
+          const dateB = b.commentType === 'meta' ? b.created : (b as DocumentComment).date;
+          return new Date(dateB).getTime() - new Date(dateA).getTime();
+        });
       case 'date-asc':
-        return sorted.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        return sorted.sort((a, b) => {
+          const dateA = a.commentType === 'meta' ? a.created : (a as DocumentComment).date;
+          const dateB = b.commentType === 'meta' ? b.created : (b as DocumentComment).date;
+          return new Date(dateA).getTime() - new Date(dateB).getTime();
+        });
       case 'author-asc':
         return sorted.sort((a, b) => a.author.localeCompare(b.author));
       case 'author-desc':
@@ -77,7 +107,7 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
       default:
         return sorted;
     }
-  }, [filteredComments, sortBy]);
+  }, [combinedComments, sortBy]);
 
   // Get document name for grouping display
   const getDocumentName = (documentId: string): string => {
@@ -103,13 +133,13 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
   };
 
   // Get comment by ID or paraId
-  const getCommentById = (idOrParaId: string): DocumentComment | null => {
+  const getCommentById = (idOrParaId: string): CombinedComment | null => {
     // First try to find by regular ID
     let comment = sortedComments.find(c => c.id === idOrParaId);
     if (comment) return comment;
     
-    // Try to find by paraId
-    comment = sortedComments.find(c => c.paraId === idOrParaId);
+    // Try to find by paraId (only for word comments)
+    comment = sortedComments.find(c => c.commentType === 'word' && (c as DocumentComment).paraId === idOrParaId);
     return comment || null;
   };
 
@@ -128,26 +158,37 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
     }, 100);
   };
 
-  // Group comments by document if showing multiple documents
+  // Group comments by document if showing multiple documents (only for word comments)
   const groupedComments = useMemo(() => {
+    // Separate word comments and meta-comments
+    const wordComments = sortedComments.filter(c => c.commentType === 'word') as (DocumentComment & { commentType: 'word' })[];
+    const metaCommentsOnly = sortedComments.filter(c => c.commentType === 'meta') as (MetaComment & { commentType: 'meta' })[];
+    
     // If we have selected documents or activeDocumentId, group appropriately
     const isShowingMultiple = selectedDocumentIds.length > 1;
     
     if (!isShowingMultiple && (selectedDocumentIds.length === 1 || activeDocumentId)) {
       // Single document view
       const singleDocId = selectedDocumentIds.length === 1 ? selectedDocumentIds[0] : activeDocumentId!;
-      return { [singleDocId]: sortedComments };
+      return { 
+        wordComments: { [singleDocId]: wordComments },
+        metaComments: metaCommentsOnly
+      };
     }
     
     // Multiple documents view
-    const groups: Record<string, DocumentComment[]> = {};
-    sortedComments.forEach(comment => {
-      if (!groups[comment.documentId]) {
-        groups[comment.documentId] = [];
+    const groups: Record<string, (DocumentComment & { commentType: 'word' })[]> = {};
+    wordComments.forEach(comment => {
+      const docComment = comment as DocumentComment & { commentType: 'word' };
+      if (!groups[docComment.documentId]) {
+        groups[docComment.documentId] = [];
       }
-      groups[comment.documentId].push(comment);
+      groups[docComment.documentId].push(docComment);
     });
-    return groups;
+    return { 
+      wordComments: groups, 
+      metaComments: metaCommentsOnly 
+    };
   }, [sortedComments, selectedDocumentIds, activeDocumentId]);
 
   if (sortedComments.length === 0) {
@@ -199,7 +240,8 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
 
       {/* Comments list */}
       <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-auto">
-        {Object.entries(groupedComments).map(([documentId, docComments]) => (
+        {/* Word Comments grouped by document */}
+        {Object.entries(groupedComments.wordComments).map(([documentId, docComments]) => (
           <div key={documentId}>
             {/* Document header (only show if multiple documents are selected) */}
             {selectedDocumentIds.length > 1 && (
@@ -212,18 +254,19 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
             
             {/* Comments for this document */}
             {docComments.map((comment) => {
-              const parentComment = comment.parentId ? getCommentById(comment.parentId) : null;
-              const isReply = !!comment.parentId;
+              const wordComment = comment as DocumentComment;
+              const parentComment = wordComment.parentId ? getCommentById(wordComment.parentId) : null;
+              const isReply = !!wordComment.parentId;
               
               return (
                 <div
-                  key={comment.id}
-                  id={`comment-${comment.id}`}
-                  onClick={(e) => handleCommentClick(comment.id, e)}
+                  key={wordComment.id}
+                  id={`comment-${wordComment.id}`}
+                  onClick={(e) => handleCommentClick(wordComment.id, e)}
                   className={`bg-white rounded-lg border cursor-pointer transition-all duration-200 hover:shadow-md ${
                     isReply ? 'ml-8 border-l-4 border-l-purple-300' : ''
                   } ${
-                    selectedCommentIds.includes(comment.id)
+                    selectedCommentIds.includes(wordComment.id)
                       ? 'border-blue-500 ring-2 ring-blue-200 shadow-md'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
@@ -233,39 +276,39 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                          {comment.initial || comment.author.charAt(0).toUpperCase()}
+                          {wordComment.initial || wordComment.author.charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <div className="flex items-center space-x-2">
-                            <span className="font-medium text-gray-800">{comment.author}</span>
-                            {comment.done && (
+                            <span className="font-medium text-gray-800">{wordComment.author}</span>
+                            {wordComment.done && (
                               <span className="px-1.5 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">
                                 ✓ Done
                               </span>
                             )}
-                            {comment.parentId && (
+                            {wordComment.parentId && (
                               <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 text-xs font-medium rounded">
                                 ↳ Reply
                               </span>
                             )}
-                            {comment.children && comment.children.length > 0 && (
+                            {wordComment.children && wordComment.children.length > 0 && (
                               <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded">
-                                {comment.children.length} {comment.children.length === 1 ? 'reply' : 'replies'}
+                                {wordComment.children.length} {wordComment.children.length === 1 ? 'reply' : 'replies'}
                               </span>
                             )}
                           </div>
-                          <div className="text-xs text-gray-500">{formatDate(comment.date)}</div>
+                          <div className="text-xs text-gray-500">{formatDate(wordComment.date)}</div>
                         </div>
                       </div>
-                      {comment.reference && (
+                      {wordComment.reference && (
                         <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                          {comment.reference}
+                          {wordComment.reference}
                         </span>
                       )}
                     </div>
 
                     {/* Thread navigation - Parent comment */}
-                    {parentComment && (
+                    {parentComment && parentComment.commentType === 'word' && (
                       <div className="mb-2 p-2 bg-purple-50 rounded border-l-2 border-purple-400">
                         <div className="text-xs text-purple-700 mb-1">
                           <span className="font-medium">Replying to:</span>
@@ -273,7 +316,7 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                         <div className="flex items-start justify-between">
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-medium text-purple-800">{parentComment.author}</div>
-                            <div className="text-xs text-purple-600 truncate">{parentComment.plainText.slice(0, 80)}{parentComment.plainText.length > 80 ? '...' : ''}</div>
+                            <div className="text-xs text-purple-600 truncate">{(parentComment as DocumentComment).plainText.slice(0, 80)}{(parentComment as DocumentComment).plainText.length > 80 ? '...' : ''}</div>
                           </div>
                           <button
                             onClick={(e) => navigateToComment(parentComment.id, e)}
@@ -289,25 +332,25 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                     {/* Comment text */}
                     <div 
                       className="text-gray-700 leading-relaxed mb-2"
-                      dangerouslySetInnerHTML={{ __html: comment.content }}
+                      dangerouslySetInnerHTML={{ __html: wordComment.content }}
                     />
 
                     {/* Thread navigation - Child comments */}
-                    {comment.children && comment.children.length > 0 && (
+                    {wordComment.children && wordComment.children.length > 0 && (
                       <div className="mt-3 p-2 bg-blue-50 rounded border-l-2 border-blue-400">
                         <div className="text-xs font-medium text-blue-700 mb-2">
-                          {comment.children.length} {comment.children.length === 1 ? 'Reply' : 'Replies'}:
+                          {wordComment.children.length} {wordComment.children.length === 1 ? 'Reply' : 'Replies'}:
                         </div>
                         <div className="space-y-2">
-                          {comment.children.map((childId) => {
+                          {wordComment.children.map((childId) => {
                             const child = getCommentById(childId);
-                            if (!child) return null;
+                            if (!child || child.commentType !== 'word') return null;
                             
                             return (
                               <div key={childId} className="flex items-start justify-between bg-white p-2 rounded">
                                 <div className="flex-1 min-w-0">
                                   <div className="text-xs font-medium text-gray-800">{child.author}</div>
-                                  <div className="text-xs text-gray-600 truncate">{child.plainText.slice(0, 80)}{child.plainText.length > 80 ? '...' : ''}</div>
+                                  <div className="text-xs text-gray-600 truncate">{(child as DocumentComment).plainText.slice(0, 80)}{(child as DocumentComment).plainText.length > 80 ? '...' : ''}</div>
                                 </div>
                                 <button
                                   onClick={(e) => navigateToComment(child.id, e)}
@@ -324,9 +367,9 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
                     )}
 
                     {/* Selection indicator */}
-                    {selectedCommentIds.includes(comment.id) && (
+                    {selectedCommentIds.includes(wordComment.id) && (
                       <div className="mt-2 text-xs text-blue-600 font-medium">
-                        ✓ Selected for review {selectedCommentIds.length > 1 && `(${selectedCommentIds.indexOf(comment.id) + 1} of ${selectedCommentIds.length})`}
+                        ✓ Selected for review {selectedCommentIds.length > 1 && `(${selectedCommentIds.indexOf(wordComment.id) + 1} of ${selectedCommentIds.length})`}
                       </div>
                     )}
                   </div>
@@ -335,6 +378,29 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
             })}
           </div>
         ))}
+        
+        {/* Meta-Comments Section */}
+        {groupedComments.metaComments.length > 0 && (
+          <div>
+            <div className="sticky top-0 bg-purple-100 px-3 py-2 border-b border-purple-300 mb-3">
+              <h3 className="font-medium text-purple-800 flex items-center gap-2">
+                <span className="text-lg">✨</span>
+                Meta-Comments ({groupedComments.metaComments.length})
+              </h3>
+            </div>
+            
+            {groupedComments.metaComments.map((metaComment) => (
+              <MetaCommentItem
+                key={metaComment.id}
+                metaComment={metaComment as MetaComment}
+                isSelected={selectedCommentIds.includes(metaComment.id)}
+                onClick={handleCommentClick}
+                onUpdate={updateMetaComment}
+                onDelete={removeMetaComment}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

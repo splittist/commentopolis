@@ -3,11 +3,12 @@
  * Database name: commentopolis-db
  */
 
-import type { Project } from '../types';
+import type { Project, MetaComment } from '../types';
 
 const DB_NAME = 'commentopolis-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incremented to add meta-comments store
 const PROJECTS_STORE = 'projects';
+const META_COMMENTS_STORE = 'metaComments';
 
 /**
  * Initialize IndexedDB database
@@ -35,6 +36,17 @@ export function initDB(): Promise<IDBDatabase> {
         objectStore.createIndex('name', 'name', { unique: false });
         objectStore.createIndex('lastModified', 'lastModified', { unique: false });
         objectStore.createIndex('created', 'created', { unique: false });
+      }
+
+      // Create meta-comments object store if it doesn't exist
+      if (!db.objectStoreNames.contains(META_COMMENTS_STORE)) {
+        const metaStore = db.createObjectStore(META_COMMENTS_STORE, { keyPath: 'id' });
+        
+        // Create indexes for efficient queries
+        metaStore.createIndex('author', 'author', { unique: false });
+        metaStore.createIndex('created', 'created', { unique: false });
+        metaStore.createIndex('type', 'type', { unique: false });
+        metaStore.createIndex('includeInReport', 'includeInReport', { unique: false });
       }
     };
   });
@@ -64,6 +76,17 @@ interface StoredProject {
     }>;
     [key: string]: unknown;
   }>;
+  metaComments?: Array<{
+    id: string;
+    type: string;
+    text: string;
+    author: string;
+    created: string;
+    modified?: string;
+    linkedComments: string[];
+    tags: string[];
+    includeInReport: boolean;
+  }>;
 }
 
 /**
@@ -81,7 +104,12 @@ function deserializeProject(stored: StoredProject): Project {
         ...comment,
         date: new Date(comment.date)
       }))
-    }))
+    })),
+    metaComments: stored.metaComments?.map((metaComment) => ({
+      ...metaComment,
+      created: new Date(metaComment.created),
+      modified: metaComment.modified ? new Date(metaComment.modified) : undefined
+    })) || []
   };
 }
 
@@ -114,6 +142,11 @@ export async function saveProject(project: Project): Promise<void> {
           ...comment,
           date: comment.date.toISOString()
         }))
+      })),
+      metaComments: project.metaComments?.map(metaComment => ({
+        ...metaComment,
+        created: metaComment.created.toISOString(),
+        modified: metaComment.modified?.toISOString()
       }))
     };
     
@@ -243,4 +276,105 @@ export function importProjectFromJSON(json: string): Project {
     }
     throw error;
   }
+}
+
+/**
+ * Save a meta-comment to IndexedDB
+ */
+export async function saveMetaComment(metaComment: MetaComment): Promise<void> {
+  const db = await getDB();
+  
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([META_COMMENTS_STORE], 'readwrite');
+    const objectStore = transaction.objectStore(META_COMMENTS_STORE);
+    
+    // Convert dates to ISO strings for storage
+    const metaCommentToStore = {
+      ...metaComment,
+      created: metaComment.created.toISOString(),
+      modified: metaComment.modified?.toISOString()
+    };
+    
+    const request = objectStore.put(metaCommentToStore);
+    
+    request.onsuccess = () => {
+      resolve();
+    };
+    
+    request.onerror = () => {
+      reject(new Error('Failed to save meta-comment'));
+    };
+    
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+/**
+ * Load all meta-comments from IndexedDB
+ */
+export async function loadMetaComments(): Promise<MetaComment[]> {
+  const db = await getDB();
+  
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([META_COMMENTS_STORE], 'readonly');
+    const objectStore = transaction.objectStore(META_COMMENTS_STORE);
+    const request = objectStore.getAll();
+    
+    request.onsuccess = () => {
+      const results = request.result as Array<{
+        id: string;
+        type: string;
+        text: string;
+        author: string;
+        created: string;
+        modified?: string;
+        linkedComments: string[];
+        tags: string[];
+        includeInReport: boolean;
+      }>;
+      
+      const metaComments = results.map((mc) => ({
+        ...mc,
+        created: new Date(mc.created),
+        modified: mc.modified ? new Date(mc.modified) : undefined
+      })) as MetaComment[];
+      
+      resolve(metaComments);
+    };
+    
+    request.onerror = () => {
+      reject(new Error('Failed to load meta-comments'));
+    };
+    
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
+}
+
+/**
+ * Delete a meta-comment from IndexedDB
+ */
+export async function deleteMetaComment(id: string): Promise<void> {
+  const db = await getDB();
+  
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction([META_COMMENTS_STORE], 'readwrite');
+    const objectStore = transaction.objectStore(META_COMMENTS_STORE);
+    const request = objectStore.delete(id);
+    
+    request.onsuccess = () => {
+      resolve();
+    };
+    
+    request.onerror = () => {
+      reject(new Error('Failed to delete meta-comment'));
+    };
+    
+    transaction.oncomplete = () => {
+      db.close();
+    };
+  });
 }

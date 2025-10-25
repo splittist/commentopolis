@@ -1,7 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import type { UploadedDocument, DocumentStateManager, DocumentComment } from '../types';
+import type { UploadedDocument, DocumentStateManager, DocumentComment, MetaComment } from '../types';
 import { parseDocxComments, isValidDocxFile } from '../utils/docxParser';
+import { loadMetaComments, saveMetaComment, deleteMetaComment } from '../utils/indexedDB';
+import { extractHashtags } from '../utils/hashtagUtils';
 
 /**
  * Custom hook for managing document uploads and state
@@ -11,8 +13,16 @@ export const useDocuments = (): DocumentStateManager => {
   const [activeDocumentId, setActiveDocumentId] = useState<string | null>(null);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [comments, setComments] = useState<DocumentComment[]>([]);
+  const [metaComments, setMetaComments] = useState<MetaComment[]>([]);
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [selectedCommentIds, setSelectedCommentIds] = useState<string[]>([]);
+
+  // Load meta-comments from IndexedDB on mount
+  useEffect(() => {
+    loadMetaComments().then(setMetaComments).catch(error => {
+      console.error('Failed to load meta-comments:', error);
+    });
+  }, []);
 
   const addDocument = useCallback(async (file: File) => {
     // Validate file type
@@ -256,11 +266,67 @@ export const useDocuments = (): DocumentStateManager => {
     setDocuments(prev => prev.filter(doc => !doc.id.startsWith('demo-')));
   }, []);
 
+  // Meta-comment management methods
+  const addMetaComment = useCallback(async (metaCommentData: Omit<MetaComment, 'id' | 'created'>) => {
+    const newMetaComment: MetaComment = {
+      ...metaCommentData,
+      id: `meta-${crypto.randomUUID()}`,
+      created: new Date(),
+      tags: extractHashtags(metaCommentData.text)
+    };
+
+    try {
+      await saveMetaComment(newMetaComment);
+      setMetaComments(prev => [...prev, newMetaComment]);
+      toast.success('Meta-comment created');
+    } catch (error) {
+      console.error('Failed to save meta-comment:', error);
+      toast.error('Failed to save meta-comment');
+    }
+  }, []);
+
+  const updateMetaComment = useCallback(async (id: string, updates: Partial<MetaComment>) => {
+    const metaComment = metaComments.find(mc => mc.id === id);
+    if (!metaComment) {
+      toast.error('Meta-comment not found');
+      return;
+    }
+
+    const updatedMetaComment: MetaComment = {
+      ...metaComment,
+      ...updates,
+      modified: new Date(),
+      // Update tags if text changed
+      tags: updates.text ? extractHashtags(updates.text) : metaComment.tags
+    };
+
+    try {
+      await saveMetaComment(updatedMetaComment);
+      setMetaComments(prev => prev.map(mc => mc.id === id ? updatedMetaComment : mc));
+      toast.success('Meta-comment updated');
+    } catch (error) {
+      console.error('Failed to update meta-comment:', error);
+      toast.error('Failed to update meta-comment');
+    }
+  }, [metaComments]);
+
+  const removeMetaComment = useCallback(async (id: string) => {
+    try {
+      await deleteMetaComment(id);
+      setMetaComments(prev => prev.filter(mc => mc.id !== id));
+      toast.success('Meta-comment deleted');
+    } catch (error) {
+      console.error('Failed to delete meta-comment:', error);
+      toast.error('Failed to delete meta-comment');
+    }
+  }, []);
+
   return {
     documents,
     activeDocumentId,
     selectedDocumentIds,
     comments,
+    metaComments,
     selectedCommentId,
     selectedCommentIds,
     addDocument,
@@ -276,6 +342,9 @@ export const useDocuments = (): DocumentStateManager => {
     selectAllDocuments,
     deselectAllDocuments,
     toggleDocumentSelection,
+    addMetaComment,
+    updateMetaComment,
+    removeMetaComment,
     addDemoComments,
     removeDemoComments,
     addDemoDocuments,
