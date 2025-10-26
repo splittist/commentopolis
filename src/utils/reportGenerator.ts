@@ -181,7 +181,7 @@ function stripHtmlTags(html: string): string {
 
 /**
  * Generate a default report config from selected comments
- * This function is no longer needed but kept for backward compatibility
+ * Used by ReportPreview to quickly create a simple report config
  */
 export function generateDefaultReportConfig(
   title: string,
