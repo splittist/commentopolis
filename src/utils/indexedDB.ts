@@ -87,6 +87,23 @@ interface StoredProject {
     tags: string[];
     includeInReport: boolean;
   }>;
+  reportConfigs?: Array<{
+    id: string;
+    name: string;
+    selectedCommentIds: string[];
+    sections: Array<{
+      id: string;
+      title: string;
+      description?: string;
+      commentIds: string[];
+    }>;
+    options: {
+      showAuthor: boolean;
+      showDate: boolean;
+      showContext: boolean;
+      format: 'human' | 'hybrid';
+    };
+  }>;
 }
 
 /**
@@ -109,7 +126,8 @@ function deserializeProject(stored: StoredProject): Project {
       ...metaComment,
       created: new Date(metaComment.created),
       modified: metaComment.modified ? new Date(metaComment.modified) : undefined
-    })) || []
+    })) || [],
+    reportConfigs: stored.reportConfigs || []
   };
 }
 

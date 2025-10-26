@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import type { UploadedDocument, DocumentStateManager, DocumentComment, MetaComment } from '../types';
+import type { UploadedDocument, DocumentStateManager, DocumentComment, MetaComment, ReportConfig } from '../types';
 import { parseDocxComments, isValidDocxFile } from '../utils/docxParser';
 import { loadMetaComments, saveMetaComment, deleteMetaComment } from '../utils/indexedDB';
 import { extractHashtags } from '../utils/hashtagUtils';
@@ -14,6 +14,7 @@ export const useDocuments = (): DocumentStateManager => {
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const [comments, setComments] = useState<DocumentComment[]>([]);
   const [metaComments, setMetaComments] = useState<MetaComment[]>([]);
+  const [reportConfigs, setReportConfigs] = useState<ReportConfig[]>([]);
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [selectedCommentIds, setSelectedCommentIds] = useState<string[]>([]);
 
@@ -321,12 +322,48 @@ export const useDocuments = (): DocumentStateManager => {
     }
   }, []);
 
+  // Report configuration management methods
+  const addReportConfig = useCallback((configData: Omit<ReportConfig, 'id'>) => {
+    const newConfig: ReportConfig = {
+      ...configData,
+      id: `report-${crypto.randomUUID()}`
+    };
+
+    setReportConfigs(prev => [...prev, newConfig]);
+    toast.success(`Report configuration "${newConfig.name}" created`);
+  }, []);
+
+  const updateReportConfig = useCallback((id: string, updates: Partial<ReportConfig>) => {
+    const config = reportConfigs.find(rc => rc.id === id);
+    if (!config) {
+      toast.error('Report configuration not found');
+      return;
+    }
+
+    const updatedConfig: ReportConfig = {
+      ...config,
+      ...updates
+    };
+
+    setReportConfigs(prev => prev.map(rc => rc.id === id ? updatedConfig : rc));
+    toast.success(`Report configuration "${updatedConfig.name}" updated`);
+  }, [reportConfigs]);
+
+  const removeReportConfig = useCallback((id: string) => {
+    const config = reportConfigs.find(rc => rc.id === id);
+    setReportConfigs(prev => prev.filter(rc => rc.id !== id));
+    if (config) {
+      toast.success(`Report configuration "${config.name}" deleted`);
+    }
+  }, [reportConfigs]);
+
   return {
     documents,
     activeDocumentId,
     selectedDocumentIds,
     comments,
     metaComments,
+    reportConfigs,
     selectedCommentId,
     selectedCommentIds,
     addDocument,
@@ -345,6 +382,9 @@ export const useDocuments = (): DocumentStateManager => {
     addMetaComment,
     updateMetaComment,
     removeMetaComment,
+    addReportConfig,
+    updateReportConfig,
+    removeReportConfig,
     addDemoComments,
     removeDemoComments,
     addDemoDocuments,

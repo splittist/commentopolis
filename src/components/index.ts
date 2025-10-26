@@ -12,3 +12,4 @@ export { CommentFilters } from './CommentFilters';
 export { ProjectManager } from './ProjectManager';
 export { MetaCommentForm } from './MetaCommentForm';
 export { MetaCommentItem } from './MetaCommentItem';
+export { ReportBuilder } from './ReportBuilder';
