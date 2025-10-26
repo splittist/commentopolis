@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { PanelState } from '../types';
 import { Panel } from './Panel';
 import { DocumentUpload } from './DocumentUpload';
 import { DocumentList } from './DocumentList';
 import { CommentFilters } from './CommentFilters';
 import { ProjectManager } from './ProjectManager';
+import { ReportBuilder } from './ReportBuilder';
 import { useDocumentContext } from '../hooks/useDocumentContext';
 
 interface LeftPanelProps {
@@ -16,7 +17,8 @@ interface LeftPanelProps {
  * Left Panel component with state-specific content
  */
 export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
-  const { documents } = useDocumentContext();
+  const { documents, comments, metaComments, reportConfigs, addReportConfig, updateReportConfig, removeReportConfig } = useDocumentContext();
+  const [showReportBuilder, setShowReportBuilder] = useState(false);
 
   const renderMinimizedContent = () => (
     <div className="flex flex-col items-center space-y-4 p-2">
@@ -71,6 +73,19 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
           <CommentFilters />
         </div>
       )}
+
+      {/* Report Builder Button */}
+      {(comments.length > 0 || metaComments.length > 0) && (
+        <div className="pt-4 border-t border-gray-200">
+          <button
+            onClick={() => setShowReportBuilder(true)}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+          >
+            <span>📊</span>
+            <span>Report Builder</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 
@@ -105,6 +120,19 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
               <CommentFilters />
             </div>
           )}
+
+          {/* Report Builder Button */}
+          {(comments.length > 0 || metaComments.length > 0) && (
+            <div className="pt-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowReportBuilder(true)}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              >
+                <span>📊</span>
+                <span>Report Builder</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -126,6 +154,18 @@ export const LeftPanel: React.FC<LeftPanelProps> = ({ state, onToggle }) => {
   return (
     <Panel state={state} position="left" onToggle={onToggle}>
       {renderContent()}
+      
+      {showReportBuilder && (
+        <ReportBuilder
+          comments={comments}
+          metaComments={metaComments}
+          reportConfigs={reportConfigs}
+          onSave={addReportConfig}
+          onUpdate={updateReportConfig}
+          onDelete={removeReportConfig}
+          onClose={() => setShowReportBuilder(false)}
+        />
+      )}
     </Panel>
   );
 };

@@ -115,6 +115,7 @@ export interface DocumentStateManager {
   selectedDocumentIds: string[]; // New: array of selected document IDs
   comments: DocumentComment[]; // All comments from all documents
   metaComments: MetaComment[]; // All meta-comments across all projects
+  reportConfigs: ReportConfig[]; // All report configurations for current project
   selectedCommentId: string | null; // Currently selected comment for right panel (backward compatible)
   selectedCommentIds: string[]; // New: array of selected comment IDs for multi-selection
   addDocument: (file: File) => void;
@@ -136,6 +137,10 @@ export interface DocumentStateManager {
   addMetaComment: (metaComment: Omit<MetaComment, 'id' | 'created'>) => void;
   updateMetaComment: (id: string, updates: Partial<MetaComment>) => void;
   removeMetaComment: (id: string) => void;
+  // Report configuration management methods
+  addReportConfig: (config: Omit<ReportConfig, 'id'>) => void;
+  updateReportConfig: (id: string, updates: Partial<ReportConfig>) => void;
+  removeReportConfig: (id: string) => void;
   // Demo support methods
   addDemoComments?: (comments: DocumentComment[]) => void;
   removeDemoComments?: () => void;
@@ -151,6 +156,7 @@ export interface Project {
   lastModified: Date;
   documents: DocumentMetadata[];
   metaComments?: MetaComment[]; // Meta-comments for this project
+  reportConfigs?: ReportConfig[]; // Report configurations for this project
 }
 
 export interface DocumentMetadata {
@@ -188,4 +194,25 @@ export interface ReportConfig {
   sections: ReportSection[];
   includeQuestions: boolean; // Whether to include "Questions for Follow-up" section
   generatedDate?: Date;
+// Report configuration types
+export interface ReportConfig {
+  id: string;
+  name: string;
+  selectedCommentIds: string[]; // IDs of Word + meta comments
+  sections: ReportSection[];
+  options: ReportOptions;
+}
+
+export interface ReportSection {
+  id: string;
+  title: string;
+  description?: string;
+  commentIds: string[];
+}
+
+export interface ReportOptions {
+  showAuthor: boolean;
+  showDate: boolean;
+  showContext: boolean; // Include surrounding document text
+  format: 'human' | 'hybrid';
 }

@@ -13,3 +13,4 @@ export { ProjectManager } from './ProjectManager';
 export { MetaCommentForm } from './MetaCommentForm';
 export { MetaCommentItem } from './MetaCommentItem';
 export { ReportPreview } from './ReportPreview';
+export { ReportBuilder } from './ReportBuilder';

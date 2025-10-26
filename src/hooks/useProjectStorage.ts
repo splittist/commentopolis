@@ -4,7 +4,7 @@
 
 import { useCallback } from 'react';
 import { toast } from 'react-hot-toast';
-import type { Project, DocumentMetadata, UploadedDocument } from '../types';
+import type { Project, DocumentMetadata, UploadedDocument, MetaComment, ReportConfig } from '../types';
 import { 
   saveProject as saveProjectToDB, 
   loadProject as loadProjectFromDB,
@@ -16,7 +16,7 @@ import {
 import { hashFile, compareHashes } from '../utils/fileHash';
 
 export interface ProjectStorageHook {
-  saveProject: (name: string, documents: UploadedDocument[], projectId?: string) => Promise<string>;
+  saveProject: (name: string, documents: UploadedDocument[], metaComments?: MetaComment[], reportConfigs?: ReportConfig[], projectId?: string) => Promise<string>;
   loadProject: (id: string) => Promise<Project | null>;
   listProjects: () => Promise<Project[]>;
   deleteProject: (id: string) => Promise<void>;
@@ -69,11 +69,15 @@ export const useProjectStorage = (): ProjectStorageHook => {
    * Save current project state to IndexedDB
    * @param name Project name
    * @param documents Documents to save
+   * @param metaComments Optional meta-comments to save
+   * @param reportConfigs Optional report configurations to save
    * @param projectId Optional project ID for updates (generates new ID if not provided)
    */
   const saveProject = useCallback(async (
     name: string, 
     documents: UploadedDocument[],
+    metaComments: MetaComment[] = [],
+    reportConfigs: ReportConfig[] = [],
     projectId?: string
   ): Promise<string> => {
     try {
@@ -88,7 +92,9 @@ export const useProjectStorage = (): ProjectStorageHook => {
         name,
         created: projectId ? now : now, // Keep original if updating (would need to load it)
         lastModified: now,
-        documents: documentMetadata
+        documents: documentMetadata,
+        metaComments,
+        reportConfigs
       };
 
       await saveProjectToDB(project);
