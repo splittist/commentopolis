@@ -201,12 +201,12 @@ function formatDate(date: Date): string {
  * Strip HTML tags from text for clean prose output
  */
 function stripHtmlTags(html: string): string {
-  // Create a temporary element to decode HTML entities
-  const temp = document.createElement('div');
-  temp.innerHTML = html;
+  // Use DOMParser to safely parse HTML
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
   
   // Get text content and clean up whitespace
-  let text = temp.textContent || temp.innerText || '';
+  let text = doc.body.textContent || '';
   
   // Normalize whitespace
   text = text.replace(/\s+/g, ' ').trim();
