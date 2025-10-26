@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { PanelState } from '../types';
 import { Panel } from './Panel';
 import { CommentDetails } from './CommentDetails';
 import { MultipleCommentDetails } from './MultipleCommentDetails';
+import { ReportPreview } from './ReportPreview';
 import { useDocumentContext } from '../hooks/useDocumentContext';
 
 interface RightPanelProps {
@@ -14,7 +15,8 @@ interface RightPanelProps {
  * Right Panel component with state-specific content
  */
 export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
-  const { documents, comments, selectedCommentId, selectedCommentIds } = useDocumentContext();
+  const { documents, comments, metaComments, selectedCommentId, selectedCommentIds } = useDocumentContext();
+  const [showReportPreview, setShowReportPreview] = useState(false);
   
   // Find the selected comments
   const selectedComments = selectedCommentIds.length > 0
@@ -57,10 +59,32 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
   );
 
   const renderNormalContent = () => {
+    // Show report preview if enabled
+    if (showReportPreview) {
+      return (
+        <ReportPreview
+          selectedCommentIds={selectedCommentIds}
+          wordComments={comments}
+          metaComments={metaComments}
+          documents={documents}
+          onClose={() => setShowReportPreview(false)}
+        />
+      );
+    }
+    
     // If multiple comments are selected, show all of them with their paragraphs
     if (selectedComments.length > 1) {
       return (
-        <div className="p-4">
+        <div className="p-4 space-y-4">
+          {/* Report Generation Button */}
+          <button
+            onClick={() => setShowReportPreview(true)}
+            className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+          >
+            <span>📄</span>
+            <span>Generate Report</span>
+          </button>
+          
           <MultipleCommentDetails 
             comments={selectedComments}
             documents={documents}
@@ -103,10 +127,32 @@ export const RightPanel: React.FC<RightPanelProps> = ({ state, onToggle }) => {
   };
 
   const renderFocusedContent = () => {
+    // Show report preview if enabled
+    if (showReportPreview) {
+      return (
+        <ReportPreview
+          selectedCommentIds={selectedCommentIds}
+          wordComments={comments}
+          metaComments={metaComments}
+          documents={documents}
+          onClose={() => setShowReportPreview(false)}
+        />
+      );
+    }
+    
     // If multiple comments are selected, show all of them with their paragraphs
     if (selectedComments.length > 1) {
       return (
-        <div className="p-4">
+        <div className="p-4 space-y-4">
+          {/* Report Generation Button */}
+          <button
+            onClick={() => setShowReportPreview(true)}
+            className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-colors font-medium flex items-center justify-center gap-2"
+          >
+            <span>📄</span>
+            <span>Generate Report</span>
+          </button>
+          
           <MultipleCommentDetails 
             comments={selectedComments}
             documents={documents}
