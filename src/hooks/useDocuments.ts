@@ -17,6 +17,11 @@ export const useDocuments = (): DocumentStateManager => {
   const [reportConfigs, setReportConfigs] = useState<ReportConfig[]>([]);
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
   const [selectedCommentIds, setSelectedCommentIds] = useState<string[]>([]);
+  
+  // Project state
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [currentProjectName, setCurrentProjectName] = useState<string | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Load meta-comments from IndexedDB on mount
   useEffect(() => {
@@ -53,6 +58,7 @@ export const useDocuments = (): DocumentStateManager => {
 
     // Add document immediately with processing flag
     setDocuments(prev => [...prev, newDocument]);
+    setHasUnsavedChanges(true);
     toast.success(`Document "${file.name}" uploaded successfully`);
 
     // Parse comments asynchronously
@@ -135,6 +141,8 @@ export const useDocuments = (): DocumentStateManager => {
     if (activeDocumentId === id) {
       setActiveDocumentId(null);
     }
+    
+    setHasUnsavedChanges(true);
     
     if (docToRemove) {
       toast.success(`Document "${docToRemove.name}" removed`);
@@ -279,6 +287,7 @@ export const useDocuments = (): DocumentStateManager => {
     try {
       await saveMetaComment(newMetaComment);
       setMetaComments(prev => [...prev, newMetaComment]);
+      setHasUnsavedChanges(true);
       toast.success('Meta-comment created');
     } catch (error) {
       console.error('Failed to save meta-comment:', error);
@@ -304,6 +313,7 @@ export const useDocuments = (): DocumentStateManager => {
     try {
       await saveMetaComment(updatedMetaComment);
       setMetaComments(prev => prev.map(mc => mc.id === id ? updatedMetaComment : mc));
+      setHasUnsavedChanges(true);
       toast.success('Meta-comment updated');
     } catch (error) {
       console.error('Failed to update meta-comment:', error);
@@ -315,6 +325,7 @@ export const useDocuments = (): DocumentStateManager => {
     try {
       await deleteMetaComment(id);
       setMetaComments(prev => prev.filter(mc => mc.id !== id));
+      setHasUnsavedChanges(true);
       toast.success('Meta-comment deleted');
     } catch (error) {
       console.error('Failed to delete meta-comment:', error);
@@ -330,6 +341,7 @@ export const useDocuments = (): DocumentStateManager => {
     };
 
     setReportConfigs(prev => [...prev, newConfig]);
+    setHasUnsavedChanges(true);
     toast.success(`Report configuration "${newConfig.name}" created`);
   }, []);
 
@@ -346,6 +358,7 @@ export const useDocuments = (): DocumentStateManager => {
     };
 
     setReportConfigs(prev => prev.map(rc => rc.id === id ? updatedConfig : rc));
+    setHasUnsavedChanges(true);
     toast.success(`Report configuration "${updatedConfig.name}" updated`);
   }, [reportConfigs]);
 
@@ -355,7 +368,37 @@ export const useDocuments = (): DocumentStateManager => {
     if (config) {
       toast.success(`Report configuration "${config.name}" deleted`);
     }
+    setHasUnsavedChanges(true);
   }, [reportConfigs]);
+
+  // Project management methods
+  const setCurrentProject = useCallback((projectId: string | null, projectName: string | null) => {
+    setCurrentProjectId(projectId);
+    setCurrentProjectName(projectName);
+    setHasUnsavedChanges(false);
+  }, []);
+
+  const markAsUnsaved = useCallback(() => {
+    setHasUnsavedChanges(true);
+  }, []);
+
+  const markAsSaved = useCallback(() => {
+    setHasUnsavedChanges(false);
+  }, []);
+
+  const clearProject = useCallback(() => {
+    setCurrentProjectId(null);
+    setCurrentProjectName(null);
+    setHasUnsavedChanges(false);
+    setDocuments([]);
+    setComments([]);
+    setMetaComments([]);
+    setReportConfigs([]);
+    setSelectedDocumentIds([]);
+    setSelectedCommentIds([]);
+    setSelectedCommentId(null);
+    setActiveDocumentId(null);
+  }, []);
 
   return {
     documents,
@@ -366,6 +409,9 @@ export const useDocuments = (): DocumentStateManager => {
     reportConfigs,
     selectedCommentId,
     selectedCommentIds,
+    currentProjectId,
+    currentProjectName,
+    hasUnsavedChanges,
     addDocument,
     removeDocument,
     setActiveDocument,
@@ -385,6 +431,10 @@ export const useDocuments = (): DocumentStateManager => {
     addReportConfig,
     updateReportConfig,
     removeReportConfig,
+    setCurrentProject,
+    markAsUnsaved,
+    markAsSaved,
+    clearProject,
     addDemoComments,
     removeDemoComments,
     addDemoDocuments,
