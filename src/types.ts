@@ -118,6 +118,10 @@ export interface DocumentStateManager {
   reportConfigs: ReportConfig[]; // All report configurations for current project
   selectedCommentId: string | null; // Currently selected comment for right panel (backward compatible)
   selectedCommentIds: string[]; // New: array of selected comment IDs for multi-selection
+  // Project state
+  currentProjectId: string | null; // ID of currently loaded project
+  currentProjectName: string | null; // Name of currently loaded project
+  hasUnsavedChanges: boolean; // Whether there are unsaved changes
   addDocument: (file: File) => void;
   removeDocument: (id: string) => void;
   setActiveDocument: (id: string | null) => void; // Keep for backward compatibility
@@ -141,6 +145,11 @@ export interface DocumentStateManager {
   addReportConfig: (config: Omit<ReportConfig, 'id'>) => void;
   updateReportConfig: (id: string, updates: Partial<ReportConfig>) => void;
   removeReportConfig: (id: string) => void;
+  // Project management methods
+  setCurrentProject: (projectId: string | null, projectName: string | null) => void;
+  markAsUnsaved: () => void;
+  markAsSaved: () => void;
+  clearProject: () => void;
   // Demo support methods
   addDemoComments?: (comments: DocumentComment[]) => void;
   removeDemoComments?: () => void;
