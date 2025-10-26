@@ -183,7 +183,6 @@ export interface MetaComment {
   includeInReport: boolean;
 }
 
-// Report configuration and generation types
 export interface ReportSection {
   id: string;
   title: string;
@@ -191,6 +190,7 @@ export interface ReportSection {
   commentIds: string[]; // IDs of word comments and meta-comments to include
 }
 
+// Report configuration and generation types
 export interface ReportConfig {
   id: string;
   name: string;
