@@ -1,8 +1,25 @@
 import { describe, it, expect } from 'vitest';
-import { generateHumanReport, generateDefaultReportConfig } from './reportGenerator';
-import type { ReportConfig, DocumentComment, MetaComment, UploadedDocument } from '../types';
+import { generateHumanReport, generateHybridReport, generateDefaultReportConfig } from './reportGenerator';
+import type { ReportConfig, ReportSection, DocumentComment, MetaComment, UploadedDocument } from '../types';
 
 describe('reportGenerator', () => {
+  // Helper function to create test config
+  const createTestConfig = (name: string, sections: Omit<ReportSection, 'id'>[]): ReportConfig => ({
+    id: `test-${crypto.randomUUID()}`,
+    name,
+    selectedCommentIds: sections.flatMap(s => s.commentIds),
+    sections: sections.map(s => ({
+      id: `section-${crypto.randomUUID()}`,
+      ...s
+    })),
+    options: {
+      showAuthor: true,
+      showDate: true,
+      showContext: false,
+      format: 'human'
+    }
+  });
+
   // Sample data for testing
   const sampleDocuments: UploadedDocument[] = [
     {
@@ -97,10 +114,16 @@ describe('reportGenerator', () => {
   describe('generateHumanReport', () => {
     it('should generate a report with title and date', () => {
       const config: ReportConfig = {
-        title: 'Test Report',
+        id: 'test-1',
+        name: 'Test Report',
+        selectedCommentIds: [],
         sections: [],
-        includeQuestions: false,
-        generatedDate: new Date('2024-10-24')
+        options: {
+          showAuthor: true,
+          showDate: true,
+          showContext: false,
+          format: 'human'
+        }
       };
 
       const report = generateHumanReport(config, {
@@ -110,20 +133,16 @@ describe('reportGenerator', () => {
       });
 
       expect(report).toContain('Test Report');
-      expect(report).toContain('Generated October 24, 2024');
+      expect(report).toMatch(/Generated \w+ \d+, \d{4}/);
     });
 
     it('should include document list in metadata', () => {
-      const config: ReportConfig = {
-        title: 'Test Report',
-        sections: [
-          {
-            title: 'Section 1',
-            commentIds: ['comment-1', 'comment-2']
-          }
-        ],
-        includeQuestions: false
-      };
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Section 1',
+          commentIds: ['comment-1', 'comment-2']
+        }
+      ]);
 
       const report = generateHumanReport(config, {
         wordComments: sampleWordComments,
@@ -136,16 +155,12 @@ describe('reportGenerator', () => {
     });
 
     it('should format word comments with author, document, and date attribution', () => {
-      const config: ReportConfig = {
-        title: 'Test Report',
-        sections: [
-          {
-            title: 'Critical Issue',
-            commentIds: ['comment-1']
-          }
-        ],
-        includeQuestions: false
-      };
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Critical Issue',
+          commentIds: ['comment-1']
+        }
+      ]);
 
       const report = generateHumanReport(config, {
         wordComments: sampleWordComments,
@@ -159,16 +174,12 @@ describe('reportGenerator', () => {
     });
 
     it('should format meta-comments with "My Analysis:" prefix', () => {
-      const config: ReportConfig = {
-        title: 'Test Report',
-        sections: [
-          {
-            title: 'Analysis',
-            commentIds: ['meta-1']
-          }
-        ],
-        includeQuestions: false
-      };
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Analysis',
+          commentIds: ['meta-1']
+        }
+      ]);
 
       const report = generateHumanReport(config, {
         wordComments: sampleWordComments,
@@ -181,16 +192,12 @@ describe('reportGenerator', () => {
     });
 
     it('should show linked comments context for meta-comments', () => {
-      const config: ReportConfig = {
-        title: 'Test Report',
-        sections: [
-          {
-            title: 'Analysis',
-            commentIds: ['meta-1']
-          }
-        ],
-        includeQuestions: false
-      };
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Analysis',
+          commentIds: ['meta-1']
+        }
+      ]);
 
       const report = generateHumanReport(config, {
         wordComments: sampleWordComments,
@@ -204,16 +211,12 @@ describe('reportGenerator', () => {
     });
 
     it('should show linked comments context for word comments with parent', () => {
-      const config: ReportConfig = {
-        title: 'Test Report',
-        sections: [
-          {
-            title: 'Responses',
-            commentIds: ['comment-4']
-          }
-        ],
-        includeQuestions: false
-      };
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Responses',
+          commentIds: ['comment-4']
+        }
+      ]);
 
       const report = generateHumanReport(config, {
         wordComments: sampleWordComments,
@@ -225,64 +228,17 @@ describe('reportGenerator', () => {
       expect(report).toContain('"Timeline looks aggressive"');
     });
 
-    it('should include "Questions for Follow-up" section when requested', () => {
-      const config: ReportConfig = {
-        title: 'Test Report',
-        sections: [
-          {
-            title: 'Analysis',
-            commentIds: ['meta-1', 'meta-2']
-          }
-        ],
-        includeQuestions: true
-      };
-
-      const report = generateHumanReport(config, {
-        wordComments: sampleWordComments,
-        metaComments: sampleMetaComments,
-        documents: sampleDocuments
-      });
-
-      expect(report).toContain('QUESTIONS FOR FOLLOW-UP');
-      expect(report).toContain('Should we prioritize payment terms or timeline flexibility?');
-    });
-
-    it('should not include questions section when includeQuestions is false', () => {
-      const config: ReportConfig = {
-        title: 'Test Report',
-        sections: [
-          {
-            title: 'Analysis',
-            commentIds: ['meta-1', 'meta-2']
-          }
-        ],
-        includeQuestions: false
-      };
-
-      const report = generateHumanReport(config, {
-        wordComments: sampleWordComments,
-        metaComments: sampleMetaComments,
-        documents: sampleDocuments
-      });
-
-      expect(report).not.toContain('QUESTIONS FOR FOLLOW-UP');
-    });
-
     it('should organize content into user-defined sections', () => {
-      const config: ReportConfig = {
-        title: 'Multi-Section Report',
-        sections: [
-          {
-            title: 'Legal Issues',
-            commentIds: ['comment-1']
-          },
-          {
-            title: 'Timeline Concerns',
-            commentIds: ['comment-3']
-          }
-        ],
-        includeQuestions: false
-      };
+      const config = createTestConfig('Multi-Section Report', [
+        {
+          title: 'Legal Issues',
+          commentIds: ['comment-1']
+        },
+        {
+          title: 'Timeline Concerns',
+          commentIds: ['comment-3']
+        }
+      ]);
 
       const report = generateHumanReport(config, {
         wordComments: sampleWordComments,
@@ -300,16 +256,12 @@ describe('reportGenerator', () => {
     });
 
     it('should strip HTML tags for clean prose output', () => {
-      const config: ReportConfig = {
-        title: 'Test Report',
-        sections: [
-          {
-            title: 'Section',
-            commentIds: ['comment-3']
-          }
-        ],
-        includeQuestions: false
-      };
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Section',
+          commentIds: ['comment-3']
+        }
+      ]);
 
       const report = generateHumanReport(config, {
         wordComments: sampleWordComments,
@@ -324,17 +276,12 @@ describe('reportGenerator', () => {
     });
 
     it('should generate complete sample output structure', () => {
-      const config: ReportConfig = {
-        title: 'Payment Terms Analysis - Q4 Product Launch Review',
-        sections: [
-          {
-            title: 'Critical Issue: Payment/Timeline Conflict',
-            commentIds: ['comment-1', 'meta-1']
-          }
-        ],
-        includeQuestions: true,
-        generatedDate: new Date('2024-10-24')
-      };
+      const config = createTestConfig('Payment Terms Analysis - Q4 Product Launch Review', [
+        {
+          title: 'Critical Issue: Payment/Timeline Conflict',
+          commentIds: ['comment-1', 'meta-1']
+        }
+      ]);
 
       const report = generateHumanReport(config, {
         wordComments: sampleWordComments,
@@ -344,7 +291,7 @@ describe('reportGenerator', () => {
 
       // Check key elements of sample output
       expect(report).toContain('Payment Terms Analysis - Q4 Product Launch Review');
-      expect(report).toContain('Generated October 24, 2024');
+      expect(report).toMatch(/Generated \w+ \d+, \d{4}/);
       expect(report).toContain('CRITICAL ISSUE: PAYMENT/TIMELINE CONFLICT');
       expect(report).toContain('Legal Department (budget-proposal.docx');
       expect(report).toContain('My Analysis:');
@@ -352,14 +299,14 @@ describe('reportGenerator', () => {
   });
 
   describe('generateDefaultReportConfig', () => {
-    it('should create a config with provided title', () => {
+    it('should create a config with provided name', () => {
       const config = generateDefaultReportConfig(
         'Test Report',
         [],
         []
       );
 
-      expect(config.title).toBe('Test Report');
+      expect(config.name).toBe('Test Report');
     });
 
     it('should create a single section with all selected comments', () => {
@@ -370,32 +317,125 @@ describe('reportGenerator', () => {
       );
 
       expect(config.sections).toHaveLength(1);
-      expect(config.sections[0].title).toBe('Analysis');
-      expect(config.sections[0].commentIds).toEqual(['comment-1', 'meta-1']);
+      expect(config.sections?.[0].title).toBe('Analysis');
+      expect(config.sections?.[0].commentIds).toEqual(['comment-1', 'meta-1']);
     });
 
-    it('should enable questions by default', () => {
+    it('should set default format to human', () => {
       const config = generateDefaultReportConfig(
         'Test Report',
         [],
         []
       );
 
-      expect(config.includeQuestions).toBe(true);
+      expect(config.options?.format).toBe('human');
+    });
+  });
+
+  describe('generateHybridReport', () => {
+    it('should generate hybrid format with comment IDs', () => {
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Section',
+          commentIds: ['comment-1']
+        }
+      ]);
+      config.options.format = 'hybrid';
+
+      const report = generateHybridReport(config, {
+        wordComments: sampleWordComments,
+        metaComments: [],
+        documents: sampleDocuments
+      });
+
+      // Should contain comment reference ID
+      expect(report).toMatch(/\[C\d+\]/);
+      expect(report).toContain('Legal Department');
     });
 
-    it('should set generated date to current date', () => {
-      const config = generateDefaultReportConfig(
-        'Test Report',
-        [],
-        []
-      );
+    it('should include section separators', () => {
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Section 1',
+          commentIds: ['comment-1']
+        },
+        {
+          title: 'Section 2',
+          commentIds: ['comment-2']
+        }
+      ]);
+      config.options.format = 'hybrid';
 
-      expect(config.generatedDate).toBeInstanceOf(Date);
-      // Check it's recent (within last second)
-      const now = new Date();
-      const diff = now.getTime() - config.generatedDate!.getTime();
-      expect(diff).toBeLessThan(1000);
+      const report = generateHybridReport(config, {
+        wordComments: sampleWordComments,
+        metaComments: [],
+        documents: sampleDocuments
+      });
+
+      // Should contain section separator
+      expect(report).toContain('═══════════════════════════════════════════════════════════════');
+    });
+
+    it('should include Comment Reference Map', () => {
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Section',
+          commentIds: ['comment-1', 'meta-1']
+        }
+      ]);
+      config.options.format = 'hybrid';
+
+      const report = generateHybridReport(config, {
+        wordComments: sampleWordComments,
+        metaComments: sampleMetaComments,
+        documents: sampleDocuments
+      });
+
+      expect(report).toContain('COMMENT REFERENCE MAP');
+      expect(report).toContain('Legal Department');
+    });
+
+    it('should extract and display hashtags', () => {
+      const testComment: DocumentComment = {
+        ...sampleWordComments[0],
+        plainText: 'This is a test #payment #timeline comment'
+      };
+
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Section',
+          commentIds: [testComment.id]
+        }
+      ]);
+      config.options.format = 'hybrid';
+
+      const report = generateHybridReport(config, {
+        wordComments: [testComment],
+        metaComments: [],
+        documents: sampleDocuments
+      });
+
+      expect(report).toContain('#payment');
+      expect(report).toContain('#timeline');
+    });
+
+    it('should show relationships for meta-comments with conflicts', () => {
+      const config = createTestConfig('Test Report', [
+        {
+          title: 'Analysis',
+          commentIds: ['comment-1', 'comment-3', 'meta-1']
+        }
+      ]);
+      config.options.format = 'hybrid';
+
+      const report = generateHybridReport(config, {
+        wordComments: sampleWordComments,
+        metaComments: sampleMetaComments,
+        documents: sampleDocuments
+      });
+
+      expect(report).toContain('RELATIONSHIPS');
+      expect(report).toMatch(/synthesizes|relates-to|conflicts-with/);
     });
   });
 });

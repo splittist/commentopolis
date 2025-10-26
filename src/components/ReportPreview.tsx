@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import type { ReportConfig, DocumentComment, MetaComment, UploadedDocument } from '../types';
-import { generateHumanReport, generateDefaultReportConfig } from '../utils/reportGenerator';
+import { generateHumanReport, generateHybridReport, generateDefaultReportConfig } from '../utils/reportGenerator';
 
 interface ReportPreviewProps {
   selectedCommentIds: string[];
@@ -22,19 +22,31 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
   onClose
 }) => {
   const [reportTitle, setReportTitle] = useState('Analysis Report');
-  const [includeQuestions, setIncludeQuestions] = useState(true);
+  const [reportFormat, setReportFormat] = useState<'human' | 'hybrid'>('human');
 
   // Generate the report config and text
   const reportConfig: ReportConfig = {
+    id: `report-${crypto.randomUUID()}`,
     ...generateDefaultReportConfig(reportTitle, selectedCommentIds, metaComments),
-    includeQuestions
-  };
+    options: {
+      showAuthor: true,
+      showDate: true,
+      showContext: false,
+      format: reportFormat
+    }
+  } as ReportConfig;
 
-  const reportText = generateHumanReport(reportConfig, {
-    wordComments,
-    metaComments,
-    documents
-  });
+  const reportText = reportFormat === 'hybrid'
+    ? generateHybridReport(reportConfig, {
+        wordComments,
+        metaComments,
+        documents
+      })
+    : generateHumanReport(reportConfig, {
+        wordComments,
+        metaComments,
+        documents
+      });
 
   // Handle copy to clipboard
   const handleCopyToClipboard = async () => {
@@ -92,17 +104,39 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="includeQuestions"
-              checked={includeQuestions}
-              onChange={(e) => setIncludeQuestions(e.target.checked)}
-              className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-            />
-            <label htmlFor="includeQuestions" className="text-sm text-gray-700">
-              Include "Questions for Follow-up" section
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Format
             </label>
+            <div className="flex gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="format"
+                  value="human"
+                  checked={reportFormat === 'human'}
+                  onChange={(e) => setReportFormat(e.target.value as 'human' | 'hybrid')}
+                  className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                />
+                <span className="text-sm text-gray-700">Human</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="format"
+                  value="hybrid"
+                  checked={reportFormat === 'hybrid'}
+                  onChange={(e) => setReportFormat(e.target.value as 'human' | 'hybrid')}
+                  className="w-4 h-4 text-purple-600 border-gray-300 focus:ring-purple-500"
+                />
+                <span className="text-sm text-gray-700">Hybrid (AI-Friendly)</span>
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              {reportFormat === 'human' 
+                ? 'Clean prose format for reading and sharing' 
+                : 'Structured format with comment IDs and relationships for AI analysis'}
+            </p>
           </div>
 
           {/* Stats */}
@@ -145,7 +179,9 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({
           </button>
         </div>
         <p className="text-xs text-gray-500 mt-2 text-right">
-          Format is clean prose suitable for email or Word documents
+          {reportFormat === 'human' 
+            ? 'Format is clean prose suitable for email or Word documents' 
+            : 'Format includes structural markers for AI analysis while remaining human-readable'}
         </p>
       </div>
     </div>
