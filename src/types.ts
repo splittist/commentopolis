@@ -183,20 +183,23 @@ export interface MetaComment {
   includeInReport: boolean;
 }
 
-// Report configuration types
-export interface ReportConfig {
-  id: string;
-  name: string;
-  selectedCommentIds: string[]; // IDs of Word + meta comments
-  sections: ReportSection[];
-  options: ReportOptions;
-}
-
 export interface ReportSection {
   id: string;
   title: string;
   description?: string;
-  commentIds: string[];
+  commentIds: string[]; // IDs of word comments and meta-comments to include
+}
+
+// Report configuration and generation types
+export interface ReportConfig {
+  id: string;
+  name: string;
+  selectedCommentIds: string[]; // IDs of Word + meta comments
+  title: string;
+  sections: ReportSection[];
+  includeQuestions: boolean; // Whether to include "Questions for Follow-up" section
+  options: ReportOptions;
+  generatedDate?: Date;
 }
 
 export interface ReportOptions {
