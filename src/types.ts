@@ -95,6 +95,10 @@ export interface CommentFilters {
   };
   searchText: string; // Full-text search
   hashtags: string[]; // Filter by hashtags (without # symbol, empty array means no filter)
+  commentType: 'all' | 'word' | 'meta'; // Filter by comment type
+  hasLinks: boolean; // Show only comments with linked comments (word comments linked by meta-comments, or meta-comments with links)
+  inReport: boolean; // Show only comments included in current report (meta-comments only)
+  metaCommentType: MetaComment['type'] | 'all'; // Filter meta-comments by type
 }
 
 export interface CommentFilterState {
@@ -103,10 +107,17 @@ export interface CommentFilterState {
   setDateRangeFilter: (start: Date | null, end: Date | null) => void;
   setSearchTextFilter: (searchText: string) => void;
   setHashtagsFilter: (hashtags: string[]) => void;
+  setCommentTypeFilter: (commentType: CommentFilters['commentType']) => void;
+  setHasLinksFilter: (hasLinks: boolean) => void;
+  setInReportFilter: (inReport: boolean) => void;
+  setMetaCommentTypeFilter: (metaCommentType: CommentFilters['metaCommentType']) => void;
   resetFilters: () => void;
-  getFilteredComments: (comments: DocumentComment[]) => DocumentComment[];
-  getUniqueAuthors: (comments: DocumentComment[]) => string[];
-  getUniqueHashtags: (comments: DocumentComment[]) => string[];
+  getFilteredComments: (comments: DocumentComment[], metaComments: MetaComment[]) => { 
+    wordComments: DocumentComment[]; 
+    metaComments: MetaComment[] 
+  };
+  getUniqueAuthors: (comments: DocumentComment[], metaComments: MetaComment[]) => string[];
+  getUniqueHashtags: (comments: DocumentComment[], metaComments: MetaComment[]) => string[];
 }
 
 export interface DocumentStateManager {
