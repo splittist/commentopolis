@@ -37,17 +37,17 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
     return [];
   }, [comments, selectedDocumentIds, activeDocumentId]);
 
-  // Apply comment filters to the selected comments
-  const filteredComments = useMemo(() => {
-    return getFilteredComments(selectedComments);
-  }, [selectedComments, getFilteredComments]);
+  // Apply comment filters to the selected comments and meta-comments
+  const { wordComments: filteredComments, metaComments: filteredMetaComments } = useMemo(() => {
+    return getFilteredComments(selectedComments, metaComments);
+  }, [selectedComments, metaComments, getFilteredComments]);
 
   // Combine word comments and meta-comments
   const combinedComments = useMemo(() => {
     const wordCommentsWithType: CombinedComment[] = filteredComments.map(c => ({ ...c, commentType: 'word' as const }));
-    const metaCommentsWithType: CombinedComment[] = metaComments.map(mc => ({ ...mc, commentType: 'meta' as const }));
+    const metaCommentsWithType: CombinedComment[] = filteredMetaComments.map(mc => ({ ...mc, commentType: 'meta' as const }));
     return [...wordCommentsWithType, ...metaCommentsWithType];
-  }, [filteredComments, metaComments]);
+  }, [filteredComments, filteredMetaComments]);
 
   // Sort comments based on selected option
   const sortedComments = useMemo(() => {
@@ -84,20 +84,20 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
           }
           
           // Both are meta-comments, sort by created date
-          const dateA = a.commentType === 'meta' ? a.created : (a as DocumentComment).date;
-          const dateB = b.commentType === 'meta' ? b.created : (b as DocumentComment).date;
+          const dateA = a.commentType === 'meta' ? (a as MetaComment).created : (a as DocumentComment).date;
+          const dateB = b.commentType === 'meta' ? (b as MetaComment).created : (b as DocumentComment).date;
           return new Date(dateA).getTime() - new Date(dateB).getTime();
         });
       case 'date-desc':
         return sorted.sort((a, b) => {
-          const dateA = a.commentType === 'meta' ? a.created : (a as DocumentComment).date;
-          const dateB = b.commentType === 'meta' ? b.created : (b as DocumentComment).date;
+          const dateA = a.commentType === 'meta' ? (a as MetaComment).created : (a as DocumentComment).date;
+          const dateB = b.commentType === 'meta' ? (b as MetaComment).created : (b as DocumentComment).date;
           return new Date(dateB).getTime() - new Date(dateA).getTime();
         });
       case 'date-asc':
         return sorted.sort((a, b) => {
-          const dateA = a.commentType === 'meta' ? a.created : (a as DocumentComment).date;
-          const dateB = b.commentType === 'meta' ? b.created : (b as DocumentComment).date;
+          const dateA = a.commentType === 'meta' ? (a as MetaComment).created : (a as DocumentComment).date;
+          const dateB = b.commentType === 'meta' ? (b as MetaComment).created : (b as DocumentComment).date;
           return new Date(dateA).getTime() - new Date(dateB).getTime();
         });
       case 'author-asc':
@@ -158,7 +158,7 @@ export const CommentList: React.FC<CommentListProps> = ({ className = '' }) => {
     }, 100);
   };
 
-  // Check if a comment is linked by any meta-comment
+  // Check if a comment is linked by any meta-comment (use all meta-comments, not filtered)
   const isCommentLinked = (commentId: string): boolean => {
     return metaComments.some(mc => mc.linkedComments.includes(commentId));
   };

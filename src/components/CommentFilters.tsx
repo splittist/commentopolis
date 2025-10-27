@@ -11,8 +11,21 @@ interface CommentFiltersProps {
  * CommentFilters component for filtering comments in the left panel
  */
 export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }) => {
-  const { filters, setAuthorFilter, setDateRangeFilter, setSearchTextFilter, setHashtagsFilter, resetFilters, getUniqueAuthors, getUniqueHashtags } = useCommentFilterContext();
-  const { comments } = useDocumentContext();
+  const { 
+    filters, 
+    setAuthorFilter, 
+    setDateRangeFilter, 
+    setSearchTextFilter, 
+    setHashtagsFilter,
+    setCommentTypeFilter,
+    setHasLinksFilter,
+    setInReportFilter,
+    setMetaCommentTypeFilter,
+    resetFilters, 
+    getUniqueAuthors, 
+    getUniqueHashtags 
+  } = useCommentFilterContext();
+  const { comments, metaComments } = useDocumentContext();
   
   // Local state for search input to handle debouncing
   const [searchInput, setSearchInput] = useState(filters.searchText);
@@ -24,10 +37,10 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
   }, [debouncedSearch, setSearchTextFilter]);
 
   // Get unique authors for dropdown
-  const uniqueAuthors = getUniqueAuthors(comments);
+  const uniqueAuthors = getUniqueAuthors(comments, metaComments);
 
   // Get unique hashtags for dropdown
-  const uniqueHashtags = getUniqueHashtags(comments);
+  const uniqueHashtags = getUniqueHashtags(comments, metaComments);
 
   // Format date for input (YYYY-MM-DD)
   const formatDateForInput = (date: Date | null): string => {
@@ -59,9 +72,9 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
   };
 
   // Check if any filters are active
-  const hasActiveFilters = filters.author || filters.dateRange.start || filters.dateRange.end || filters.searchText || filters.hashtags.length > 0;
+  const hasActiveFilters = filters.author || filters.dateRange.start || filters.dateRange.end || filters.searchText || filters.hashtags.length > 0 || filters.commentType !== 'all' || filters.hasLinks || filters.inReport || filters.metaCommentType !== 'all';
 
-  if (comments.length === 0) {
+  if (comments.length === 0 && metaComments.length === 0) {
     return null; // Don't show filters if there are no comments
   }
 
@@ -97,6 +110,80 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
           ))}
         </select>
       </div>
+
+      {/* Comment Type Filter */}
+      <div className="space-y-2">
+        <label className="block text-sm font-medium text-gray-700">
+          Comment Type
+        </label>
+        <select
+          value={filters.commentType}
+          onChange={(e) => setCommentTypeFilter(e.target.value as 'all' | 'word' | 'meta')}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        >
+          <option value="all">Both (Word + Meta)</option>
+          <option value="word">Word Comments Only</option>
+          <option value="meta">Meta-Comments Only</option>
+        </select>
+      </div>
+
+      {/* Meta-Comment Type Filter - only show when meta-comments are included */}
+      {filters.commentType !== 'word' && (
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Meta-Comment Type
+          </label>
+          <select
+            value={filters.metaCommentType}
+            onChange={(e) => setMetaCommentTypeFilter(e.target.value as typeof filters.metaCommentType)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="all">All types</option>
+            <option value="synthesis">💡 Synthesis</option>
+            <option value="link">🔗 Link</option>
+            <option value="question">❓ Question</option>
+            <option value="observation">👁️ Observation</option>
+          </select>
+        </div>
+      )}
+
+      {/* Linked Comments Filter */}
+      <div className="space-y-2">
+        <label className="flex items-center space-x-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={filters.hasLinks}
+            onChange={(e) => setHasLinksFilter(e.target.checked)}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-sm font-medium text-gray-700">
+            Show only comments with links
+          </span>
+        </label>
+        <p className="text-xs text-gray-500 ml-6">
+          Word comments linked by meta-comments, or meta-comments with linked comments
+        </p>
+      </div>
+
+      {/* In Report Filter - only show when meta-comments are included */}
+      {filters.commentType !== 'word' && (
+        <div className="space-y-2">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={filters.inReport}
+              onChange={(e) => setInReportFilter(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium text-gray-700">
+              Show only comments in report
+            </span>
+          </label>
+          <p className="text-xs text-gray-500 ml-6">
+            Meta-comments marked for inclusion in current report
+          </p>
+        </div>
+      )}
 
       {/* Date Range Filter */}
       <div className="space-y-2">
@@ -141,7 +228,7 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search in comments, authors, references..."
+            placeholder="Search comments, meta-comments, authors..."
             className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
           <span className="absolute right-3 top-2.5 text-gray-400">🔍</span>
@@ -180,7 +267,11 @@ export const CommentFilters: React.FC<CommentFiltersProps> = ({ className = '' }
             filters.author && `Author: ${filters.author}`,
             (filters.dateRange.start || filters.dateRange.end) && 'Date range',
             filters.searchText && `Search: "${filters.searchText}"`,
-            filters.hashtags.length > 0 && `Hashtags: ${filters.hashtags.map(h => `#${h}`).join(', ')}`
+            filters.hashtags.length > 0 && `Hashtags: ${filters.hashtags.map(h => `#${h}`).join(', ')}`,
+            filters.commentType !== 'all' && `Type: ${filters.commentType === 'word' ? 'Word only' : 'Meta only'}`,
+            filters.hasLinks && 'With links',
+            filters.inReport && 'In report',
+            filters.metaCommentType !== 'all' && `Meta type: ${filters.metaCommentType}`
           ].filter(Boolean).join(', ')}
         </div>
       )}

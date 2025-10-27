@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 import { useCommentFilters } from './useCommentFilters';
-import type { DocumentComment } from '../types';
+import type { DocumentComment, MetaComment } from '../types';
 
 describe('useCommentFilters', () => {
   const mockComments: DocumentComment[] = [
@@ -33,6 +33,8 @@ describe('useCommentFilters', () => {
     },
   ];
 
+  const mockMetaComments: MetaComment[] = [];
+
   it('should initialize with default filters', () => {
     const { result } = renderHook(() => useCommentFilters());
 
@@ -50,9 +52,9 @@ describe('useCommentFilters', () => {
       result.current.setAuthorFilter('John Doe');
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(2);
-    expect(filteredComments.every(comment => comment.author === 'John Doe')).toBe(true);
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(2);
+    expect(filtered.wordComments.every(comment => comment.author === 'John Doe')).toBe(true);
   });
 
   it('should filter comments by search text', () => {
@@ -62,9 +64,9 @@ describe('useCommentFilters', () => {
       result.current.setSearchTextFilter('implementation');
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(1);
-    expect(filteredComments[0].plainText).toContain('implementation');
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(1);
+    expect(filtered.wordComments[0].plainText).toContain('implementation');
   });
 
   it('should filter comments by date range', () => {
@@ -77,8 +79,8 @@ describe('useCommentFilters', () => {
       );
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(2);
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(2);
   });
 
   it('should apply multiple filters together', () => {
@@ -89,10 +91,10 @@ describe('useCommentFilters', () => {
       result.current.setSearchTextFilter('design');
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(1);
-    expect(filteredComments[0].author).toBe('John Doe');
-    expect(filteredComments[0].plainText).toContain('design');
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(1);
+    expect(filtered.wordComments[0].author).toBe('John Doe');
+    expect(filtered.wordComments[0].plainText).toContain('design');
   });
 
   it('should reset all filters', () => {
@@ -119,7 +121,7 @@ describe('useCommentFilters', () => {
   it('should get unique authors from comments', () => {
     const { result } = renderHook(() => useCommentFilters());
 
-    const uniqueAuthors = result.current.getUniqueAuthors(mockComments);
+    const uniqueAuthors = result.current.getUniqueAuthors(mockComments, mockMetaComments);
     expect(uniqueAuthors).toEqual(['Jane Smith', 'John Doe']);
   });
 
@@ -130,9 +132,9 @@ describe('useCommentFilters', () => {
       result.current.setSearchTextFilter('Jane');
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(1);
-    expect(filteredComments[0].author).toBe('Jane Smith');
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(1);
+    expect(filtered.wordComments[0].author).toBe('Jane Smith');
   });
 
   it('should handle empty search text', () => {
@@ -142,8 +144,8 @@ describe('useCommentFilters', () => {
       result.current.setSearchTextFilter('');
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(3);
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(3);
   });
 
   it('should filter comments by single hashtag', () => {
@@ -153,9 +155,9 @@ describe('useCommentFilters', () => {
       result.current.setHashtagsFilter(['budget']);
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(2);
-    expect(filteredComments.every(comment => comment.plainText.includes('#budget'))).toBe(true);
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(2);
+    expect(filtered.wordComments.every(comment => comment.plainText.includes('#budget'))).toBe(true);
   });
 
   it('should filter comments by multiple hashtags', () => {
@@ -165,9 +167,9 @@ describe('useCommentFilters', () => {
       result.current.setHashtagsFilter(['budget', 'timeline']);
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
     // Should include comments with #budget OR #timeline
-    expect(filteredComments).toHaveLength(3);
+    expect(filtered.wordComments).toHaveLength(3);
   });
 
   it('should filter comments by hashtag with # symbol', () => {
@@ -177,8 +179,8 @@ describe('useCommentFilters', () => {
       result.current.setHashtagsFilter(['#budget']);
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(2);
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(2);
   });
 
   it('should be case-insensitive for hashtag filter', () => {
@@ -188,8 +190,8 @@ describe('useCommentFilters', () => {
       result.current.setHashtagsFilter(['BUDGET']);
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(2);
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(2);
   });
 
   it('should return all comments when hashtags filter is empty array', () => {
@@ -199,14 +201,14 @@ describe('useCommentFilters', () => {
       result.current.setHashtagsFilter([]);
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(3);
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(3);
   });
 
   it('should get unique hashtags from comments', () => {
     const { result } = renderHook(() => useCommentFilters());
 
-    const uniqueHashtags = result.current.getUniqueHashtags(mockComments);
+    const uniqueHashtags = result.current.getUniqueHashtags(mockComments, mockMetaComments);
     expect(uniqueHashtags).toEqual(['budget', 'review', 'timeline']);
   });
 
@@ -218,9 +220,9 @@ describe('useCommentFilters', () => {
       result.current.setHashtagsFilter(['budget']);
     });
 
-    const filteredComments = result.current.getFilteredComments(mockComments);
-    expect(filteredComments).toHaveLength(2);
-    expect(filteredComments.every(comment => 
+    const filtered = result.current.getFilteredComments(mockComments, mockMetaComments);
+    expect(filtered.wordComments).toHaveLength(2);
+    expect(filtered.wordComments.every(comment => 
       comment.author === 'John Doe' && comment.plainText.includes('#budget')
     )).toBe(true);
   });
