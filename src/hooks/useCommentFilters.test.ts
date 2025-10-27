@@ -226,4 +226,163 @@ describe('useCommentFilters', () => {
       comment.author === 'John Doe' && comment.plainText.includes('#budget')
     )).toBe(true);
   });
+
+  // New filter tests
+  describe('New filtering features', () => {
+    const mockMetaCommentsWithData: MetaComment[] = [
+      {
+        id: 'meta1',
+        type: 'synthesis',
+        text: 'This synthesizes comments about budget #budget',
+        author: 'John Doe',
+        created: new Date('2023-01-04T10:00:00Z'),
+        linkedComments: ['comment1', 'comment3'],
+        tags: ['budget'],
+        includeInReport: true,
+      },
+      {
+        id: 'meta2',
+        type: 'question',
+        text: 'What about the timeline? #timeline',
+        author: 'Jane Smith',
+        created: new Date('2023-01-05T11:00:00Z'),
+        linkedComments: ['comment2'],
+        tags: ['timeline'],
+        includeInReport: false,
+      },
+      {
+        id: 'meta3',
+        type: 'observation',
+        text: 'Interesting pattern here',
+        author: 'John Doe',
+        created: new Date('2023-01-06T12:00:00Z'),
+        linkedComments: [],
+        tags: [],
+        includeInReport: true,
+      },
+    ];
+
+    it('should filter by comment type - word only', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      act(() => {
+        result.current.setCommentTypeFilter('word');
+      });
+
+      const filtered = result.current.getFilteredComments(mockComments, mockMetaCommentsWithData);
+      expect(filtered.wordComments).toHaveLength(3);
+      expect(filtered.metaComments).toHaveLength(0);
+    });
+
+    it('should filter by comment type - meta only', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      act(() => {
+        result.current.setCommentTypeFilter('meta');
+      });
+
+      const filtered = result.current.getFilteredComments(mockComments, mockMetaCommentsWithData);
+      expect(filtered.wordComments).toHaveLength(0);
+      expect(filtered.metaComments).toHaveLength(3);
+    });
+
+    it('should filter by comment type - all (default)', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      const filtered = result.current.getFilteredComments(mockComments, mockMetaCommentsWithData);
+      expect(filtered.wordComments).toHaveLength(3);
+      expect(filtered.metaComments).toHaveLength(3);
+    });
+
+    it('should filter by hasLinks - show only word comments linked by meta-comments', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      act(() => {
+        result.current.setHasLinksFilter(true);
+      });
+
+      const filtered = result.current.getFilteredComments(mockComments, mockMetaCommentsWithData);
+      expect(filtered.wordComments).toHaveLength(3); // comment1, comment2, comment3 are all linked
+      expect(filtered.metaComments).toHaveLength(2); // meta1 and meta2 have linked comments, meta3 doesn't
+    });
+
+    it('should filter by inReport - show only meta-comments in report', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      act(() => {
+        result.current.setInReportFilter(true);
+      });
+
+      const filtered = result.current.getFilteredComments(mockComments, mockMetaCommentsWithData);
+      expect(filtered.wordComments).toHaveLength(3); // Word comments not affected
+      expect(filtered.metaComments).toHaveLength(2); // Only meta1 and meta3 are in report
+    });
+
+    it('should filter by meta-comment type', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      act(() => {
+        result.current.setMetaCommentTypeFilter('synthesis');
+      });
+
+      const filtered = result.current.getFilteredComments(mockComments, mockMetaCommentsWithData);
+      expect(filtered.metaComments).toHaveLength(1);
+      expect(filtered.metaComments[0].type).toBe('synthesis');
+    });
+
+    it('should search in meta-comment text', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      act(() => {
+        result.current.setSearchTextFilter('synthesizes');
+      });
+
+      const filtered = result.current.getFilteredComments(mockComments, mockMetaCommentsWithData);
+      expect(filtered.wordComments).toHaveLength(0);
+      expect(filtered.metaComments).toHaveLength(1);
+      expect(filtered.metaComments[0].text).toContain('synthesizes');
+    });
+
+    it('should search in meta-comment tags', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      act(() => {
+        result.current.setSearchTextFilter('timeline');
+      });
+
+      const filtered = result.current.getFilteredComments(mockComments, mockMetaCommentsWithData);
+      // Should find comment2 (has #timeline) and meta2 (has #timeline tag)
+      expect(filtered.wordComments).toHaveLength(1);
+      expect(filtered.metaComments).toHaveLength(1);
+    });
+
+    it('should get unique authors from both word comments and meta-comments', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      const uniqueAuthors = result.current.getUniqueAuthors(mockComments, mockMetaCommentsWithData);
+      expect(uniqueAuthors).toEqual(['Jane Smith', 'John Doe']); // Should be sorted
+    });
+
+    it('should get unique hashtags from both word comments and meta-comments', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      const uniqueHashtags = result.current.getUniqueHashtags(mockComments, mockMetaCommentsWithData);
+      expect(uniqueHashtags).toEqual(['budget', 'review', 'timeline']); // Should be sorted
+    });
+
+    it('should combine new filters with existing filters', () => {
+      const { result } = renderHook(() => useCommentFilters());
+
+      act(() => {
+        result.current.setAuthorFilter('John Doe');
+        result.current.setCommentTypeFilter('meta');
+        result.current.setMetaCommentTypeFilter('synthesis');
+      });
+
+      const filtered = result.current.getFilteredComments(mockComments, mockMetaCommentsWithData);
+      expect(filtered.wordComments).toHaveLength(0); // Filtered to meta only
+      expect(filtered.metaComments).toHaveLength(1); // Only John Doe's synthesis
+      expect(filtered.metaComments[0].id).toBe('meta1');
+    });
+  });
 });
