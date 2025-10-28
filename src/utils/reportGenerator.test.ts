@@ -7,6 +7,8 @@ describe('reportGenerator', () => {
   const createTestConfig = (name: string, sections: Omit<ReportSection, 'id'>[]): ReportConfig => ({
     id: `test-${crypto.randomUUID()}`,
     name,
+    title: `${name} Report`,
+    includeQuestions: false,
     selectedCommentIds: sections.flatMap(s => s.commentIds),
     sections: sections.map(s => ({
       id: `section-${crypto.randomUUID()}`,
@@ -116,6 +118,8 @@ describe('reportGenerator', () => {
       const config: ReportConfig = {
         id: 'test-1',
         name: 'Test Report',
+        title: 'Test Report Title',
+        includeQuestions: false,
         selectedCommentIds: [],
         sections: [],
         options: {

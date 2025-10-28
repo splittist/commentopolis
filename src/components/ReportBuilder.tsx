@@ -23,6 +23,8 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const [editMode, setEditMode] = useState<'new' | 'edit' | null>(null);
   const [configName, setConfigName] = useState('');
+  const [reportTitle, setReportTitle] = useState('');
+  const [includeQuestions, setIncludeQuestions] = useState(false);
   const [selectedCommentIds, setSelectedCommentIds] = useState<string[]>([]);
   const [sections, setSections] = useState<ReportSection[]>([]);
   const [reportOptions, setReportOptions] = useState<ReportOptions>({
@@ -43,6 +45,8 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
   const handleNewConfig = () => {
     setEditMode('new');
     setConfigName('');
+    setReportTitle('');
+    setIncludeQuestions(false);
     setSelectedCommentIds([]);
     setSections([]);
     setReportOptions({
@@ -60,6 +64,8 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
       setSelectedConfigId(configId);
       setEditMode('edit');
       setConfigName(config.name);
+      setReportTitle(config.title);
+      setIncludeQuestions(config.includeQuestions);
       setSelectedCommentIds(config.selectedCommentIds);
       setSections(config.sections);
       setReportOptions(config.options);
@@ -73,6 +79,8 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
 
     const config = {
       name: configName.trim(),
+      title: reportTitle.trim(),
+      includeQuestions,
       selectedCommentIds,
       sections,
       options: reportOptions
@@ -285,6 +293,31 @@ export const ReportBuilder: React.FC<ReportBuilderProps> = ({
                 placeholder="e.g., Executive Summary, Technical Deep Dive"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Report Title
+              </label>
+              <input
+                type="text"
+                value={reportTitle}
+                onChange={(e) => setReportTitle(e.target.value)}
+                placeholder="e.g., Document Analysis Report"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={includeQuestions}
+                  onChange={(e) => setIncludeQuestions(e.target.checked)}
+                  className="rounded text-blue-600"
+                />
+                <span className="text-sm text-gray-700">Include Questions for Follow-up Section</span>
+              </label>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

@@ -40,7 +40,9 @@ describe('ReportBuilder', () => {
     {
       id: 'config-1',
       name: 'Test Config',
+      title: 'Test Report Title',
       selectedCommentIds: ['comment-1', 'meta-1'],
+      includeQuestions: false,
       sections: [
         {
           id: 'section-1',

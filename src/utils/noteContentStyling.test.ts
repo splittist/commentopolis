@@ -60,7 +60,7 @@ describe('Note and Comment Content Styling', () => {
         })
       };
       
-      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as InstanceType<typeof JSZip>);
       
       const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
       
@@ -138,7 +138,7 @@ describe('Note and Comment Content Styling', () => {
         })
       };
       
-      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as InstanceType<typeof JSZip>);
       
       const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
       
@@ -194,7 +194,7 @@ describe('Note and Comment Content Styling', () => {
         })
       };
       
-      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as InstanceType<typeof JSZip>);
       
       const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
       
@@ -296,7 +296,7 @@ describe('Note and Comment Content Styling', () => {
         })
       };
       
-      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as InstanceType<typeof JSZip>);
       
       const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
       
@@ -359,7 +359,7 @@ describe('Note and Comment Content Styling', () => {
         })
       };
       
-      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as InstanceType<typeof JSZip>);
       
       const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
       
@@ -436,7 +436,7 @@ describe('Note and Comment Content Styling', () => {
         })
       };
       
-      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as JSZip);
+      vi.mocked(JSZip.loadAsync).mockResolvedValue(mockZip as unknown as InstanceType<typeof JSZip>);
       
       const result = await parseDocxComments(new File(['test'], 'test.docx'), 'doc-1');
       

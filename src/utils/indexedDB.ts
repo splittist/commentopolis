@@ -3,7 +3,13 @@
  * Database name: commentopolis-db
  */
 
-import type { Project, MetaComment } from '../types';
+import type { Project, MetaComment, ReportConfig } from '../types';
+
+// Interface for stored config that may not have new fields
+interface StoredReportConfig extends Omit<ReportConfig, 'title' | 'includeQuestions'> {
+  title?: string;
+  includeQuestions?: boolean;
+}
 
 const DB_NAME = 'commentopolis-db';
 const DB_VERSION = 2; // Incremented to add meta-comments store
@@ -124,10 +130,15 @@ function deserializeProject(stored: StoredProject): Project {
     })),
     metaComments: stored.metaComments?.map((metaComment) => ({
       ...metaComment,
+      type: metaComment.type as 'synthesis' | 'link' | 'question' | 'observation',
       created: new Date(metaComment.created),
       modified: metaComment.modified ? new Date(metaComment.modified) : undefined
     })) || [],
-    reportConfigs: stored.reportConfigs || []
+    reportConfigs: stored.reportConfigs?.map((config) => ({
+      ...config,
+      title: (config as StoredReportConfig).title || '',
+      includeQuestions: (config as StoredReportConfig).includeQuestions ?? false
+    })) || []
   };
 }
 
