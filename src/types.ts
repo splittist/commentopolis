@@ -161,11 +161,6 @@ export interface DocumentStateManager {
   markAsUnsaved: () => void;
   markAsSaved: () => void;
   clearProject: () => void;
-  // Demo support methods
-  addDemoComments?: (comments: DocumentComment[]) => void;
-  removeDemoComments?: () => void;
-  addDemoDocuments?: (documents: UploadedDocument[]) => void;
-  removeDemoDocuments?: () => void;
 }
 
 // Project persistence types

@@ -13,15 +13,16 @@ describe('App', () => {
     expect(screen.queryByText('Comment-centric document exploration')).not.toBeInTheDocument()
   })
 
-  it('renders three-panel layout', () => {
+  it('renders three-panel layout with real document prompt', () => {
     render(<App />)
-    
+
     // Check for panel toggle buttons
     expect(screen.getByTitle('Toggle left panel')).toBeInTheDocument()
     expect(screen.getByTitle('Toggle right panel')).toBeInTheDocument()
-    
-    // Check for main content - Comment Display Demo
-    expect(screen.getByText('Comment Display Demo')).toBeInTheDocument()
+
+    // Check for main content - upload prompt instead of demo
+    expect(screen.getByText('Upload a document to get started')).toBeInTheDocument()
+    expect(screen.queryByText(/Comment Display Demo/)).not.toBeInTheDocument()
   })
 
   it('toggles left panel state when button is clicked', () => {
