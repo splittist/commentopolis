@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Panel } from './Panel';
 import { CommentList } from './CommentList';
-import { CommentListDemo } from './CommentListDemo';
 import { DocumentViewer } from './DocumentViewer';
 import { MetaCommentForm } from './MetaCommentForm';
 import { useDocumentContext } from '../hooks/useDocumentContext';
@@ -11,7 +10,6 @@ import { useDocumentContext } from '../hooks/useDocumentContext';
  */
 export const CenterPanel: React.FC = () => {
   const { documents, activeDocumentId, comments, metaComments, selectedCommentIds, addMetaComment, clearSelectedComments } = useDocumentContext();
-  const [showDemo, setShowDemo] = useState(false);
   const [showMetaCommentForm, setShowMetaCommentForm] = useState(false);
 
   // Show CommentList if there are documents uploaded, otherwise show welcome
@@ -92,22 +90,13 @@ export const CenterPanel: React.FC = () => {
                 {/* Comment List */}
                 <CommentList />
               </>
-            ) : showDemo ? (
-              <CommentListDemo />
             ) : (
               <>
-                {/* Demo section */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-                  <h3 className="text-xl font-semibold text-gray-800 mb-4">Comment Display Demo</h3>
-                  <p className="text-gray-600 mb-4">
-                    See how extracted comments from .docx documents are displayed in the center panel.
+                  <h3 className="text-xl font-semibold text-gray-800 mb-2">Upload a document to get started</h3>
+                  <p className="text-gray-600">
+                    Use the Documents panel on the left to import .docx files. Comments and document content will appear here once parsing completes.
                   </p>
-                  <button
-                    onClick={() => setShowDemo(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    🚀 Try Comment Display Demo
-                  </button>
                 </div>
               </>
             )}

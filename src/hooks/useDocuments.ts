@@ -256,25 +256,6 @@ export const useDocuments = (): DocumentStateManager => {
     });
   }, []);
 
-  // Demo support methods
-  const addDemoComments = useCallback((demoComments: DocumentComment[]) => {
-    setComments(prev => [...prev, ...demoComments]);
-  }, []);
-
-  const removeDemoComments = useCallback(() => {
-    // Remove comments that have demo IDs (start with 'demo-')
-    setComments(prev => prev.filter(comment => !comment.id.startsWith('demo-')));
-  }, []);
-
-  const addDemoDocuments = useCallback((demoDocuments: UploadedDocument[]) => {
-    setDocuments(prev => [...prev, ...demoDocuments]);
-  }, []);
-
-  const removeDemoDocuments = useCallback(() => {
-    // Remove documents that have demo IDs (start with 'demo-')
-    setDocuments(prev => prev.filter(doc => !doc.id.startsWith('demo-')));
-  }, []);
-
   // Meta-comment management methods
   const addMetaComment = useCallback(async (metaCommentData: Omit<MetaComment, 'id' | 'created'>) => {
     const newMetaComment: MetaComment = {
@@ -435,9 +416,5 @@ export const useDocuments = (): DocumentStateManager => {
     markAsUnsaved,
     markAsSaved,
     clearProject,
-    addDemoComments,
-    removeDemoComments,
-    addDemoDocuments,
-    removeDemoDocuments,
   };
 };
